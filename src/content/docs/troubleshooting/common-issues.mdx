@@ -1,0 +1,191 @@
+---
+title: Common Issues
+description: Troubleshooting organized by component with cross-links to deploy and verification pages.
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import Tooltip from "@/components/Tooltip.astro";
+
+Operational issues grouped by component. Commands assume the <Tooltip term="demo-repo" label="demo repo" /> root with `terraform -chdir=terraform`.
+
+## Terraform and deploy
+
+### Init or apply fails with provider errors
+
+Verify <Tooltip term="terraform" label="Terraform" /> >= 1.6 and <Tooltip term="aws" label="AWS" /> credentials:
+
+```bash
+terraform --version
+aws sts get-caller-identity
+terraform -chdir=terraform init -upgrade
+```
+
+See [Terraform Init](/aws-event-driven-serverless-walkthrough/deploy/terraform-init/).
+
+### Processor Lambda fails on apply — image not found
+
+Mirror the image before full apply:
+
+```bash
+terraform -chdir=terraform apply -target=module.processing[0].aws_ecr_repository.processor_image
+./scripts/sync-processor-image.sh
+```
+
+See [ECR and Processor Image](/aws-event-driven-serverless-walkthrough/deploy/ecr-processor-image/).
+
+### Amplify deploy skipped during apply
+
+Re-deploy manually:
+
+```bash
+export AMPLIFY_APP_ID="$(terraform -chdir=terraform output -raw amplify_app_id)"
+export VITE_API_URL="$(terraform -chdir=terraform output -raw api_url)"
+export WEB_SOURCE_DIR="$(pwd)/web"
+./scripts/deploy-amplify.sh
+```
+
+See [Amplify Portal](/aws-event-driven-serverless-walkthrough/deploy/amplify-portal/).
+
+## Ingest and scheduler
+
+### Scheduler not listed
+
+Confirm stage 2 of staged apply ran:
+
+```bash
+terraform -chdir=terraform apply -var="region=ap-southeast-2" -target=module.ingest_scheduler
+aws scheduler list-schedules --query "Schedules[?contains(Name, 'ingest-sync')]"
+```
+
+See [EventBridge Scheduler](/aws-event-driven-serverless-walkthrough/verification/eventbridge-scheduler/).
+
+### No raw files in data lake
+
+Trigger manual ingest:
+
+```bash
+aws lambda invoke --function-name ingest-sync --payload '{}' /dev/stdout
+aws s3 ls "s3://$(terraform -chdir=terraform output -raw bucket_name)/raw/rinexhourly/" --recursive | head
+```
+
+See [Manual Ingest](/aws-event-driven-serverless-walkthrough/verification/manual-ingest/).
+
+### ingest-sync-errors alarm in ALARM
+
+Check <Tooltip term="cloudwatch" label="CloudWatch" /> Logs for the ingest-sync function. Common causes: invalid `LOOKBACK_HOURS`, GeoNet bucket access, or <Tooltip term="iam" label="IAM" /> permission gaps.
+
+## SQS queues
+
+### Process_Queue depth growing
+
+Check <Tooltip term="processor-lambda" label="processor" /> health and concurrency:
+
+```bash
+aws lambda get-function-configuration --function-name processor \
+  --query '{State:State,LastUpdateStatus:LastUpdateStatus}'
+
+aws cloudwatch describe-alarms --alarm-names processor-lambda-throttles \
+  --query 'MetricAlarms[].StateValue'
+```
+
+Request a <Tooltip term="lambda" label="Lambda" /> concurrency quota increase if throttles persist. See [Processor Lambda](/aws-event-driven-serverless-walkthrough/verification/processor-lambda/) and [SQS Queues](/aws-event-driven-serverless-walkthrough/verification/sqs-queues/).
+
+### DLQ messages visible
+
+Inspect <Tooltip term="dlq" label="DLQ" /> messages and processor logs. Messages arrive after 5 failed processing attempts:
+
+```bash
+aws cloudwatch describe-alarms --alarm-names dlq-messages-visible reprocess-dlq-messages-visible
+```
+
+See [Alarms and Dashboard](/aws-event-driven-serverless-walkthrough/verification/alarms-dashboard/).
+
+## Processor Lambda
+
+### LastUpdateStatus Failed
+
+Verify <Tooltip term="ecr" label="ECR" /> image exists and tag matches:
+
+```bash
+terraform -chdir=terraform output -raw processor_image_uri
+./scripts/sync-processor-image.sh
+terraform -chdir=terraform apply -var="region=ap-southeast-2"
+```
+
+### No processed output in S3
+
+Confirm raw files exist and processor is consuming queues:
+
+```bash
+aws s3 ls "s3://$(terraform -chdir=terraform output -raw bucket_name)/raw/rinexhourly/" --recursive | head
+aws sqs get-queue-attributes \
+  --queue-url "$(terraform -chdir=terraform output -raw queue_url)" \
+  --attribute-names ApproximateNumberOfMessages ApproximateNumberOfMessagesNotVisible
+```
+
+See [S3 Processed Output](/aws-event-driven-serverless-walkthrough/verification/s3-processed-output/).
+
+## REST API
+
+### curl works but portal shows CORS errors
+
+Apply CORS lockdown after first deploy:
+
+```bash
+terraform -chdir=terraform apply \
+  -var="region=ap-southeast-2" \
+  -var="amplify_domain=$(terraform -chdir=terraform output -raw cors_domain)"
+```
+
+See [CORS Lockdown](/aws-event-driven-serverless-walkthrough/deploy/cors-lockdown/).
+
+### Empty catalog
+
+Catalog lists processed output only — not raw ingest keys. Wait for processor to write under `processed/tec/` or submit a reprocess job. See [S3 Key Patterns](/aws-event-driven-serverless-walkthrough/data-contract/s3-key-patterns/).
+
+### Query returns truncated results
+
+Narrow time range or add `sv` filter. Default cap is 2000 rows. See [REST API Usage](/aws-event-driven-serverless-walkthrough/usage/rest-api-usage/).
+
+### Reprocess returns HTTP 400
+
+Only allowlisted parameter keys are accepted. See [SQS Message Schemas](/aws-event-driven-serverless-walkthrough/data-contract/sqs-message-schemas/).
+
+## Portal
+
+### Blank portal page
+
+Rebuild and redeploy:
+
+```bash
+cd web && npm install && npm run build
+export WEB_SOURCE_DIR="$(pwd)/web"
+export AMPLIFY_APP_ID="$(terraform -chdir=terraform output -raw amplify_app_id)"
+export VITE_API_URL="$(terraform -chdir=terraform output -raw api_url)"
+./scripts/deploy-amplify.sh
+```
+
+See [Portal verification](/aws-event-driven-serverless-walkthrough/verification/portal/).
+
+## Observability
+
+### Alarms not notifying
+
+Subscribe to the <Tooltip term="sns" label="SNS" /> topic:
+
+```bash
+TOPIC_ARN="$(terraform -chdir=terraform output -raw alarm_topic_arn)"
+aws sns subscribe --topic-arn "$TOPIC_ARN" --protocol email --notification-endpoint "you@example.com"
+```
+
+Confirm subscription from email. See [Alarms and Dashboard](/aws-event-driven-serverless-walkthrough/verification/alarms-dashboard/).
+
+<Aside type="tip">
+  All Lambdas emit structured JSON logs with{" "}
+  <Tooltip term="trace-id" label="trace_id" /> for cross-service correlation in
+  CloudWatch Logs.
+</Aside>
+
+## Teardown issues
+
+If `terraform destroy` fails on the <Tooltip term="s3" label="S3" /> bucket, empty it first — see [Teardown](/aws-event-driven-serverless-walkthrough/reference/teardown/).

@@ -1,0 +1,160 @@
+---
+title: S3 Key Patterns
+description: Raw ingest and processed output S3 key patterns with derivation rules.
+---
+
+import Tooltip from "@/components/Tooltip.astro";
+
+<Tooltip term="s3" label="S3" /> keys follow deterministic patterns that enable
+idempotent reprocessing and prefix-based catalog discovery.
+
+## Raw ingest keys
+
+**Pattern:** `raw/rinexhourly/{year}/{doy}/{filename}`
+
+<table>
+  <thead>
+    <tr>
+      <th>Component</th>
+      <th>Format</th>
+      <th>Example</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <code>year</code>
+      </td>
+      <td>4-digit integer</td>
+      <td>
+        <code>2026</code>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>doy</code>
+      </td>
+      <td>3-digit zero-padded integer</td>
+      <td>
+        <code>179</code>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>filename</code>
+      </td>
+      <td>
+        GeoNet hourly <Tooltip term="rinex" label="RINEX" /> 3 observation file
+        — <code>{`{station}{doy}{hour}.{YY}o`}</code> (e.g. <code>.26o</code>{" "}
+        for 2026)
+      </td>
+      <td>
+        <code>auck1790.26o</code>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+**Full example:** `raw/rinexhourly/2026/179/auck1790.26o`
+
+Ingest copies from <Tooltip term="geonet" label="GeoNet" />'s public bucket (`geonet-open-data/gnss/rinexhourly/`) into the private <Tooltip term="data-lake-bucket" label="data lake" /> under this layout.
+
+## Processed output keys
+
+**Pattern:** `processed/tec/station={station}/year={year}/doy={doy}/{source_stem}.{ext}`
+
+<table>
+  <thead>
+    <tr>
+      <th>Component</th>
+      <th>Format</th>
+      <th>Example</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <code>station</code>
+      </td>
+      <td>4-character lowercase alphanumeric</td>
+      <td>
+        <code>auck</code>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>year</code>
+      </td>
+      <td>4-digit integer</td>
+      <td>
+        <code>2026</code>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>doy</code>
+      </td>
+      <td>3-digit zero-padded integer</td>
+      <td>
+        <code>179</code>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>source_stem</code>
+      </td>
+      <td>Input filename without extension</td>
+      <td>
+        <code>auck1790</code>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>ext</code>
+      </td>
+      <td>Format extension</td>
+      <td>
+        <code>parquet</code>, <code>json</code>, <code>csv</code>,{" "}
+        <code>png</code>, <code>html</code>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+**Full examples:**
+
+- `processed/tec/station=auck/year=2026/doy=179/auck1790.parquet`
+- `processed/tec/station=auck/year=2026/doy=179/auck1790.json`
+
+## Key derivation
+
+The output key is deterministically derived from the input key:
+
+1. Parse `raw/rinexhourly/{year}/{doy}/{filename}` to extract year, doy, and filename
+2. Extract station (first 4 characters of filename, lowercased)
+3. Construct `processed/tec/station={station}/year={year}/doy={doy}/{source_stem}.{ext}` where `source_stem` is the input filename without its extension
+
+This ensures idempotent reprocessing — the same input always produces the same output key per format, allowing safe overwrites.
+
+## Catalog lookup contract
+
+Catalog endpoints list **processed output only**:
+
+- `GET /catalog` — Lists `processed/tec/station=*/` prefixes; returns unique station codes uppercased
+- `GET /catalog?station=AUCK` — Lists keys under `processed/tec/station=auck/`; parses `(year, doy)` pairs sorted descending
+
+Raw ingest keys under `raw/rinexhourly/` are not included in the catalog.
+
+The <Tooltip term="reprocess-api" label="Reprocess API" /> resolves raw input keys by listing objects under `raw/rinexhourly/` for the requested station, year, and DOY.
+
+## Verify keys in S3
+
+```bash
+aws s3 ls "s3://$(terraform -chdir=terraform output -raw bucket_name)/raw/rinexhourly/" --recursive | head
+aws s3 ls "s3://$(terraform -chdir=terraform output -raw bucket_name)/processed/tec/" --recursive | head
+```
+
+## Related pages
+
+- [Parquet Output](/aws-event-driven-serverless-walkthrough/data-contract/parquet-output/) — column schema
+- [S3 Processed Output verification](/aws-event-driven-serverless-walkthrough/verification/s3-processed-output/)

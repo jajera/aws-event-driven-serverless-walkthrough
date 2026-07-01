@@ -1,0 +1,202 @@
+---
+title: Parquet Output
+description: Processor output formats and the 11-column TEC data schema shared across Parquet, CSV, and JSON.
+---
+
+import Tooltip from "@/components/Tooltip.astro";
+
+The <Tooltip term="processor-lambda" label="processor" /> writes one or more output formats per input file. All enabled formats share the same partition path and differ only by file extension.
+
+## Output formats
+
+<table>
+  <thead>
+    <tr>
+      <th>Format</th>
+      <th>Extension</th>
+      <th>Enabled by default</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <Tooltip term="parquet" label="Parquet" /> (Snappy)
+      </td>
+      <td>
+        <code>.parquet</code>
+      </td>
+      <td>
+        Yes (<code>SAVE_PARQUET=true</code>)
+      </td>
+    </tr>
+    <tr>
+      <td>CSV</td>
+      <td>
+        <code>.csv</code>
+      </td>
+      <td>
+        Yes (<code>SAVE_CSV=true</code>)
+      </td>
+    </tr>
+    <tr>
+      <td>JSON (array of rows)</td>
+      <td>
+        <code>.json</code>
+      </td>
+      <td>
+        Yes (<code>SAVE_JSON=true</code>)
+      </td>
+    </tr>
+    <tr>
+      <td>Static plot</td>
+      <td>
+        <code>.png</code>
+      </td>
+      <td>No</td>
+    </tr>
+    <tr>
+      <td>Interactive plot</td>
+      <td>
+        <code>.html</code>
+      </td>
+      <td>No</td>
+    </tr>
+  </tbody>
+</table>
+
+## Query API preference
+
+The <Tooltip term="query-api" label="Query API" /> reads `.parquet` files when `pyarrow` is available in the <Tooltip term="lambda" label="Lambda" /> runtime. It falls back to `.json` when `pyarrow` is absent. Both formats contain the same 11-column schema.
+
+## Output data schema
+
+All data formats (Parquet, CSV, JSON) contain 11 fields:
+
+<table>
+  <thead>
+    <tr>
+      <th>Column</th>
+      <th>Type</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <code>epoch</code>
+      </td>
+      <td>Timestamp</td>
+      <td>Observation epoch in UTC</td>
+    </tr>
+    <tr>
+      <td>
+        <code>sv</code>
+      </td>
+      <td>String</td>
+      <td>
+        Satellite vehicle identifier (e.g., <code>G01</code>, <code>R05</code>)
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>id_arc</code>
+      </td>
+      <td>Int32</td>
+      <td>Arc identifier for continuous signal tracking</td>
+    </tr>
+    <tr>
+      <td>
+        <code>lat_ipp</code>
+      </td>
+      <td>Float64 / null</td>
+      <td>
+        <Tooltip term="ipp" label="IPP" /> latitude in degrees
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>lon_ipp</code>
+      </td>
+      <td>Float64 / null</td>
+      <td>IPP longitude in degrees</td>
+    </tr>
+    <tr>
+      <td>
+        <code>azi</code>
+      </td>
+      <td>Float64</td>
+      <td>Azimuth in degrees</td>
+    </tr>
+    <tr>
+      <td>
+        <code>ele</code>
+      </td>
+      <td>Float64</td>
+      <td>Elevation angle in degrees</td>
+    </tr>
+    <tr>
+      <td>
+        <code>bias</code>
+      </td>
+      <td>Float64</td>
+      <td>Receiver bias estimate</td>
+    </tr>
+    <tr>
+      <td>
+        <code>stec</code>
+      </td>
+      <td>Float64</td>
+      <td>
+        Slant <Tooltip term="tec" label="TEC" /> in TECU
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>vtec</code>
+      </td>
+      <td>Float64</td>
+      <td>Vertical TEC in TECU</td>
+    </tr>
+    <tr>
+      <td>
+        <code>veq</code>
+      </td>
+      <td>Float64</td>
+      <td>Equivalent vertical TEC</td>
+    </tr>
+  </tbody>
+</table>
+
+## NaN handling
+
+The processor may emit `NaN` for fields such as `lat_ipp` and `lon_ipp` in edge cases. The Query API sanitizes these to JSON `null` before returning them, ensuring spec-compliant responses for browser clients.
+
+## Example query response row
+
+```json
+{
+  "epoch": "2024-05-29T01:00:00Z",
+  "sv": "G01",
+  "id_arc": 1,
+  "lat_ipp": -36.85,
+  "lon_ipp": 174.76,
+  "azi": 45.2,
+  "ele": 30.1,
+  "bias": 0.5,
+  "stec": 12.3,
+  "vtec": 8.7,
+  "veq": 9.1
+}
+```
+
+## List output files
+
+```bash
+aws s3 ls "s3://$(terraform -chdir=terraform output -raw bucket_name)/processed/tec/" --recursive | grep parquet
+```
+
+## Related pages
+
+- [S3 Key Patterns](/aws-event-driven-serverless-walkthrough/data-contract/s3-key-patterns/) — output key layout
+- [API Response Schemas](/aws-event-driven-serverless-walkthrough/data-contract/api-response-schemas/) — query response format
+- [REST API Usage](/aws-event-driven-serverless-walkthrough/usage/rest-api-usage/)

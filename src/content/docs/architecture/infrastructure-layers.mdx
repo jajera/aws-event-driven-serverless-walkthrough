@@ -1,0 +1,90 @@
+---
+title: Infrastructure Layers
+description: Runtime behavior within ingest, processing, presentation, and observability layers.
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import Tooltip from "@/components/Tooltip.astro";
+
+Runtime behavior within each layer — how components interact during normal operation. For Terraform modules and design decisions, see [System Overview](/aws-event-driven-serverless-walkthrough/architecture/system-overview/). For schemas and key layouts, see [Data Contract](/aws-event-driven-serverless-walkthrough/data-contract/sqs-message-schemas/).
+
+## Ingest layer
+
+Copies recent <Tooltip term="rinex" label="RINEX" /> from <Tooltip term="geonet" label="GeoNet" /> into the private <Tooltip term="data-lake-bucket" label="data lake" /> under `raw/rinexhourly/`. A new object in the data lake is what triggers processing (<Tooltip term="s3" label="S3" /> ObjectCreated → <Tooltip term="sqs" label="SQS" />).
+
+<Aside type="note">
+  **Scheduled polling (workaround):** GeoNet publishes to a **public bucket this
+  stack does not own**. There is no webhook, feed subscription, or S3 event when
+  a new hourly file lands. <Tooltip term="ingest-sync" label="Ingest-sync" />{" "}
+  runs on a **recurring schedule**, lists the source prefix, and copies files
+  within <Tooltip term="lookback-hours" label="LOOKBACK_HOURS" />. Lookback and
+  schedule cadence must overlap so files are not missed. For an on-demand pull,
+  use [Manual
+  Ingest](/aws-event-driven-serverless-walkthrough/usage/manual-ingest/).
+</Aside>
+
+| Component                                                              | Runtime role                                                            |
+| ---------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| <Tooltip term="eventbridge-scheduler" label="EventBridge Scheduler" /> | Poll cadence (default `rate(1 hour)`); invokes ingest-sync              |
+| <Tooltip term="ingest-sync" label="Ingest_Sync_Lambda" />              | List GeoNet prefix, copy new files into `raw/rinexhourly/{year}/{doy}/` |
+
+**Per invocation:** compute rolling UTC window from `LOOKBACK_HOURS` (default 1) → list `s3://geonet-open-data/gnss/rinexhourly/` → skip objects already in the data lake → copy the rest. Ingest-sync does not enqueue <Tooltip term="sqs" label="SQS" /> directly.
+
+Verify: [EventBridge Scheduler](/aws-event-driven-serverless-walkthrough/verification/eventbridge-scheduler/) · [Manual Ingest](/aws-event-driven-serverless-walkthrough/verification/manual-ingest/) · [S3 key patterns](/aws-event-driven-serverless-walkthrough/data-contract/s3-key-patterns/) (raw layout)
+
+## Processing layer
+
+Calibrates raw RINEX into <Tooltip term="tec" label="TEC" /> with <Tooltip term="pytecg" label="PyTECGg" /> inside an <Tooltip term="processor-lambda" label="SQS-triggered Lambda container" /> (see [design notes](/aws-event-driven-serverless-walkthrough/architecture/system-overview/#key-design-decisions) for why not Batch on Fargate).
+
+| Queue                                                      | Fed by                                                 | Concurrency (default) | Path             |
+| ---------------------------------------------------------- | ------------------------------------------------------ | --------------------- | ---------------- |
+| <Tooltip term="process-queue" label="Process_Queue" />     | S3 ObjectCreated on `raw/` keys                        | 15                    | Scheduled ingest |
+| <Tooltip term="reprocess-queue" label="Reprocess_Queue" /> | <Tooltip term="reprocess-api" label="Reprocess API" /> | 2                     | Operator jobs    |
+
+Both queues: visibility timeout 900s, `batch_size=1`, `ReportBatchItemFailures`, <Tooltip term="dlq" label="DLQ" /> after 5 failed receives.
+
+**Processor invocation:** read one SQS message → load raw RINEX from `raw/rinexhourly/` → run PyTECGg (nav files from BKG) → write <Tooltip term="parquet" label="Parquet" />/JSON to `processed/tec/station={station}/year={year}/doy={doy}/` → update <Tooltip term="jobs-table" label="Jobs table" /> when `job_id` is present. Timeout 900s; memory 2048 MiB. Throughput is capped by per-queue concurrency and account Lambda concurrency.
+
+Verify: [SQS Queues](/aws-event-driven-serverless-walkthrough/verification/sqs-queues/) · [Processor Lambda](/aws-event-driven-serverless-walkthrough/verification/processor-lambda/) · [S3 Processed Output](/aws-event-driven-serverless-walkthrough/verification/s3-processed-output/) · [Parquet output](/aws-event-driven-serverless-walkthrough/data-contract/parquet-output/)
+
+## Presentation layer
+
+Exposes processed TEC through <Tooltip term="api-gateway" label="API Gateway" /> and an <Tooltip term="amplify" label="Amplify" /> portal. Clients never read the data lake or <Tooltip term="dynamodb" label="DynamoDB" /> directly.
+
+| Endpoint                  | Lambda        | Runtime role                                                  |
+| ------------------------- | ------------- | ------------------------------------------------------------- |
+| `GET /catalog`            | Query API     | Prefix-list stations and `(year, doy)` under `processed/tec/` |
+| `GET /query`              | Query API     | Range-read Parquet/JSON from S3; sanitize non-finite floats   |
+| `POST /reprocess`         | Reprocess API | Validate params, create job record, enqueue Reprocess_Queue   |
+| `GET /reprocess/{job_id}` | Reprocess API | Poll job status from DynamoDB                                 |
+
+Browser CORS locks to the Amplify hostname after [CORS Lockdown](/aws-event-driven-serverless-walkthrough/deploy/cors-lockdown/). The portal (Vite SPA in `web/`) polls `/catalog` and `/query` for charts and <Tooltip term="ipp" label="IPP" /> maps; the reprocess panel calls `/reprocess`.
+
+Request/response shapes, query limits (`QUERY_MAX_ROWS=2000`, 7-day window), and reprocess allowlists are in [API Response Schemas](/aws-event-driven-serverless-walkthrough/data-contract/api-response-schemas/) and [DynamoDB Jobs Table](/aws-event-driven-serverless-walkthrough/data-contract/dynamodb-jobs-table/).
+
+Verify: [REST API](/aws-event-driven-serverless-walkthrough/verification/rest-api/) · [Reprocess Workflow](/aws-event-driven-serverless-walkthrough/verification/reprocess-workflow/) · [Portal](/aws-event-driven-serverless-walkthrough/verification/portal/)
+
+## Observability layer
+
+Owned by the `observability` Terraform module. Monitors:
+
+- **DLQs** — visible messages on ingest and reprocess dead-letter queues
+- **Processor** — Lambda errors and throttles
+- **Queues** — depth and oldest-message age on Process_Queue and Reprocess_Queue
+- **Ingest** — ingest-sync Lambda errors
+
+Alarms publish to an <Tooltip term="sns" label="SNS" /> topic. The **`event-driven-platform`** dashboard aggregates alarm status, queue metrics, and Lambda throughput.
+
+<Aside type="tip">
+  Structured logs include <Tooltip term="trace-id" label="trace_id" /> for
+  correlating ingest, processing, and API requests across CloudWatch log groups.
+</Aside>
+
+Alarm names, SNS subscription, and dashboard verification: [Alarms and Dashboard](/aws-event-driven-serverless-walkthrough/verification/alarms-dashboard/).
+
+## Related pages
+
+- [System Overview](/aws-event-driven-serverless-walkthrough/architecture/system-overview/) — Terraform modules, staged apply, design decisions
+- [Project Overview](/aws-event-driven-serverless-walkthrough/introduction/project-overview/) — end-to-end flow and walkthrough path
+- [Staged Apply](/aws-event-driven-serverless-walkthrough/deploy/staged-apply/) — processing before scheduler
+- [Data Contract](/aws-event-driven-serverless-walkthrough/data-contract/sqs-message-schemas/) — SQS, S3 keys, Parquet, API schemas

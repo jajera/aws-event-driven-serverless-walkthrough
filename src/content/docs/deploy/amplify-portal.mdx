@@ -1,0 +1,98 @@
+---
+title: Amplify Portal
+description: Portal build, manual Amplify deploy, and API URL configuration after Terraform apply.
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import Tooltip from "@/components/Tooltip.astro";
+
+The portal is a Vite SPA hosted on <Tooltip term="amplify" label="AWS Amplify" />. <Tooltip term="terraform" label="Terraform" /> can build and zip-deploy it automatically on apply, or you can deploy manually when `deploy_amplify_on_apply=false`.
+
+## URL reference
+
+<table>
+  <thead>
+    <tr>
+      <th>Use case</th>
+      <th>URL</th>
+      <th>How to get it</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <strong>curl / scripts / Postman</strong>
+      </td>
+      <td>
+        <Tooltip term="api-gateway" label="API Gateway" /> stage
+      </td>
+      <td>
+        <code>terraform -chdir=terraform output -raw api_url</code>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <strong>Browser UI (portal)</strong>
+      </td>
+      <td>Amplify app</td>
+      <td>
+        <code>terraform -chdir=terraform output -raw app_url</code>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+The hosted portal receives `VITE_API_URL` at build time, pointing to the same API Gateway URL. No Git connection is required — deployment uses manual zip upload.
+
+## Automatic deploy on apply
+
+When `deploy_amplify_on_apply=true` (default), a full `terraform apply` runs `npm install`, `npm run build`, and uploads `web/dist/` to Amplify. Requires Node.js >= 20 on the machine running Terraform.
+
+## Manual deploy
+
+If you skipped Amplify during apply or need to ship UI changes:
+
+```bash
+export AMPLIFY_APP_ID="$(terraform -chdir=terraform output -raw amplify_app_id)"
+export VITE_API_URL="$(terraform -chdir=terraform output -raw api_url)"
+export WEB_SOURCE_DIR="$(pwd)/web"
+./scripts/deploy-amplify.sh
+```
+
+Run from the demo repo root after a successful Terraform apply.
+
+## Build only (inspection)
+
+```bash
+cd web
+npm install
+npm run build
+```
+
+Build output lands in `web/dist/`.
+
+## Run unit tests locally
+
+```bash
+cd web && npm install && npm test
+```
+
+<Aside type="caution">
+  Do not rely on `npm run dev` against the live API — browser CORS blocks
+  localhost origins. Use curl for API testing during development, or complete
+  [CORS
+  Lockdown](/aws-event-driven-serverless-walkthrough/deploy/cors-lockdown/) and
+  test against the hosted portal.
+</Aside>
+
+## Verify portal access
+
+```bash
+terraform -chdir=terraform output -raw app_url
+```
+
+Open the URL in a browser. You should see the station browser interface. See [Portal verification](/aws-event-driven-serverless-walkthrough/verification/portal/) and [Portal Usage](/aws-event-driven-serverless-walkthrough/usage/portal-usage/).
+
+## Next step
+
+Lock down <Tooltip term="api-gateway" label="API Gateway" /> CORS with [CORS Lockdown](/aws-event-driven-serverless-walkthrough/deploy/cors-lockdown/) so the hosted portal can call the API.

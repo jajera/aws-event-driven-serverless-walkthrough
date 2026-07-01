@@ -1,0 +1,210 @@
+---
+title: Project Overview
+description: What this walkthrough builds, how data flows end to end, and how the sidebar sections fit together.
+---
+
+import Tooltip from "@/components/Tooltip.astro";
+
+## What you will build
+
+This walkthrough documents the [event-driven-serverless-platform-demo](https://github.com/jajera/event-driven-serverless-platform-demo) — a consolidated <Tooltip term="aws" label="AWS" /> event-driven serverless platform for <Tooltip term="gnss" label="GNSS" /> <Tooltip term="rinex" label="RINEX" /> ingest, <Tooltip term="pytecg" label="PyTECGg" /> <Tooltip term="tec" label="TEC" /> calibration, and interactive visualization.
+
+By the end you will have:
+
+- **Ingest** — hourly <Tooltip term="rinex" label="RINEX" /> synced from <Tooltip term="geonet" label="GeoNet" /> into a private <Tooltip term="data-lake-bucket" label="data lake" />
+- **Processing** — <Tooltip term="sqs" label="SQS" />-driven <Tooltip term="processor-lambda" label="processor Lambda" /> container writing calibrated TEC output
+- **Presentation** — <Tooltip term="api-gateway" label="REST API" /> and an <Tooltip term="amplify" label="Amplify" /> portal for charts, maps, and reprocess jobs
+- **Operations** — <Tooltip term="cloudwatch" label="CloudWatch" /> alarms, <Tooltip term="sns" label="SNS" /> notifications, and the `event-driven-platform` dashboard
+
+Everything lives in one monorepo and is provisioned through <Tooltip term="terraform" label="Terraform" />.
+
+## Architecture and data flow
+
+![Architecture diagram: GeoNet RINEX flows through EventBridge Scheduler and ingest Lambda into S3, SQS-driven processor Lambda writes TEC output, and the Amplify portal queries via API Gateway and Lambda](/aws-event-driven-serverless-walkthrough/architecture-diagram.svg)
+
+Data moves left to right across three layers — ingest, processing, and presentation. New raw files in <Tooltip term="s3" label="S3" /> enqueue the <Tooltip term="process-queue" label="process queue" />; operator reprocess jobs use a separate <Tooltip term="reprocess-queue" label="reprocess queue" /> with lower concurrency so scheduled ingest is not starved.
+
+The browser and CLI reach processed data only through <Tooltip term="api-gateway" label="API Gateway" /> — not S3 or <Tooltip term="dynamodb" label="DynamoDB" /> directly. [Infrastructure Layers](/aws-event-driven-serverless-walkthrough/architecture/infrastructure-layers/) covers each component; [System Overview](/aws-event-driven-serverless-walkthrough/architecture/system-overview/) covers Terraform modules and design decisions.
+
+## Three layers
+
+<table>
+  <thead>
+    <tr>
+      <th>Layer</th>
+      <th>Responsibility</th>
+      <th>Key components</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <strong>Ingest</strong>
+      </td>
+      <td>Sync recent RINEX from GeoNet into the data lake</td>
+      <td>
+        <Tooltip term="eventbridge-scheduler" label="EventBridge Scheduler" />,{" "}
+        <Tooltip term="ingest-sync" label="Ingest_Sync_Lambda" />,{" "}
+        <Tooltip term="s3" label="S3" />{" "}
+        <Tooltip term="data-lake-bucket" label="Data_Lake_Bucket" />
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <strong>Processing</strong>
+      </td>
+      <td>Calibrate raw observations into TEC output</td>
+      <td>
+        <Tooltip term="process-queue" label="Process_Queue" />,{" "}
+        <Tooltip term="reprocess-queue" label="Reprocess_Queue" />,{" "}
+        <Tooltip term="processor-lambda" label="Processor Lambda" /> container,{" "}
+        <Tooltip term="dynamodb" label="DynamoDB" />{" "}
+        <Tooltip term="jobs-table" label="Jobs table" />
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <strong>Presentation</strong>
+      </td>
+      <td>Query, visualize, and submit reprocessing jobs</td>
+      <td>
+        <Tooltip term="api-gateway" label="API Gateway" />,{" "}
+        <Tooltip term="query-api" label="Query" />/
+        <Tooltip term="reprocess-api" label="Reprocess API" /> Lambdas,{" "}
+        <Tooltip term="amplify" label="Amplify" /> Portal
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+## What you get in production
+
+### Hosted portal
+
+![GNSS TEC Platform on Amplify showing station browser, VTEC time series, and ionospheric pierce point map for AUCK](/aws-event-driven-serverless-walkthrough/portal-screenshot.png)
+
+The portal browses processed <Tooltip term="station" label="stations" />, charts TEC metrics over time, and maps <Tooltip term="ipp" label="ionospheric pierce points" />. See [Portal Usage](/aws-event-driven-serverless-walkthrough/usage/portal-usage/) and [Amplify Portal](/aws-event-driven-serverless-walkthrough/deploy/amplify-portal/).
+
+### Operations dashboard
+
+![CloudWatch dashboard event-driven-platform showing alarm status, SQS queue depth, processor Lambda throughput, ingest sync, and presentation API metrics](/aws-event-driven-serverless-walkthrough/cloudwatch-dashboard-screenshot.png)
+
+Observability spans all layers. The **`event-driven-platform`** dashboard aggregates alarm health, queue backlog, Lambda throughput, and API activity. Subscribe to SNS and verify alarms in [Alarms and Dashboard](/aws-event-driven-serverless-walkthrough/verification/alarms-dashboard/).
+
+## Key terms
+
+<table>
+  <thead>
+    <tr>
+      <th>Term</th>
+      <th>Definition</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <Tooltip term="demo-repo" label="Demo Repo" />
+      </td>
+      <td>
+        Source repository{" "}
+        <a href="https://github.com/jajera/event-driven-serverless-platform-demo">
+          event-driven-serverless-platform-demo
+        </a>{" "}
+        — run commands from its root with{" "}
+        <code>terraform -chdir=terraform</code> unless stated otherwise
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <Tooltip term="rinex" label="RINEX" />
+      </td>
+      <td>
+        GNSS observation files synced from GeoNet and calibrated by the
+        processor
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <Tooltip term="tec" label="TEC" />
+      </td>
+      <td>
+        Total Electron Content — primary calibrated output served by the Query
+        API and portal
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <Tooltip term="data-lake-bucket" label="Data Lake" />
+      </td>
+      <td>
+        Private S3 bucket with <code>raw/rinexhourly/</code> ingest keys and{" "}
+        <code>processed/tec/</code> output
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <Tooltip term="process-queue" label="Process vs reprocess queues" />
+      </td>
+      <td>
+        Ingest path (<Tooltip term="process-queue" label="Process_Queue" />) vs
+        operator jobs (
+        <Tooltip term="reprocess-queue" label="Reprocess_Queue" />) — separate
+        concurrency so reprocess does not starve ingest
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <Tooltip term="processor-lambda" label="Processor Lambda" />
+      </td>
+      <td>
+        Container image (<code>ghcr.io/platformfuzz/tec-processor-image</code>,
+        mirrored to <Tooltip term="ecr" label="ECR" />) — SQS-triggered Lambda
+        container (see [design
+        notes](/aws-event-driven-serverless-walkthrough/architecture/system-overview/#key-design-decisions))
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <Tooltip term="terraform" label="Terraform stack" />
+      </td>
+      <td>
+        Five modules in <code>terraform/</code> — ingest, ingest-scheduler,
+        processing, presentation, observability
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+## Walkthrough path
+
+The sidebar follows a deploy → verify → use order.
+
+### Before you deploy
+
+1. **Prerequisites** — [Tools and Accounts](/aws-event-driven-serverless-walkthrough/prerequisites/tools-and-accounts/)
+2. **Architecture** — [System Overview](/aws-event-driven-serverless-walkthrough/architecture/system-overview/) and [Infrastructure Layers](/aws-event-driven-serverless-walkthrough/architecture/infrastructure-layers/)
+
+### Deploy
+
+Provision the stack in order: [Terraform Init](/aws-event-driven-serverless-walkthrough/deploy/terraform-init/) → [ECR and Processor Image](/aws-event-driven-serverless-walkthrough/deploy/ecr-processor-image/) → [Staged Apply](/aws-event-driven-serverless-walkthrough/deploy/staged-apply/) → [Amplify Portal](/aws-event-driven-serverless-walkthrough/deploy/amplify-portal/) → [CORS Lockdown](/aws-event-driven-serverless-walkthrough/deploy/cors-lockdown/).
+
+### Verify
+
+Confirm each stage of the pipeline:
+
+- Scheduler and ingest — [EventBridge Scheduler](/aws-event-driven-serverless-walkthrough/verification/eventbridge-scheduler/), [Manual Ingest](/aws-event-driven-serverless-walkthrough/verification/manual-ingest/)
+- Processing — [SQS Queues](/aws-event-driven-serverless-walkthrough/verification/sqs-queues/), [Processor Lambda](/aws-event-driven-serverless-walkthrough/verification/processor-lambda/), [S3 Processed Output](/aws-event-driven-serverless-walkthrough/verification/s3-processed-output/)
+- Presentation — [REST API](/aws-event-driven-serverless-walkthrough/verification/rest-api/), [Reprocess Workflow](/aws-event-driven-serverless-walkthrough/verification/reprocess-workflow/), [Portal](/aws-event-driven-serverless-walkthrough/verification/portal/)
+- Operations — [Alarms and Dashboard](/aws-event-driven-serverless-walkthrough/verification/alarms-dashboard/)
+
+### Use and reference
+
+- **Usage** — [REST API](/aws-event-driven-serverless-walkthrough/usage/rest-api-usage/), [Portal](/aws-event-driven-serverless-walkthrough/usage/portal-usage/), [Manual Ingest](/aws-event-driven-serverless-walkthrough/usage/manual-ingest/)
+- **Data Contract** — SQS, DynamoDB, S3 keys, Parquet, and API schemas
+- **Development**, **Troubleshooting**, and **Reference** — local setup, common issues, Terraform outputs
+
+## Next steps
+
+1. Confirm [Tools and Accounts](/aws-event-driven-serverless-walkthrough/prerequisites/tools-and-accounts/) before cloning the demo repo.
+2. Read [System Overview](/aws-event-driven-serverless-walkthrough/architecture/system-overview/) for module layout and design decisions.
+3. Follow [Terraform Init](/aws-event-driven-serverless-walkthrough/deploy/terraform-init/) to deploy the stack.

@@ -1,0 +1,45 @@
+---
+title: Manual Ingest
+description: Trigger ingest-sync Lambda manually to copy RINEX files without waiting for the scheduler.
+---
+
+import Tooltip from "@/components/Tooltip.astro";
+
+Use manual ingest to populate the <Tooltip term="data-lake-bucket" label="data lake" /> immediately instead of waiting for the next <Tooltip term="eventbridge-scheduler" label="EventBridge Scheduler" /> invocation.
+
+## Invoke ingest-sync
+
+From the demo repo root:
+
+```bash
+aws lambda invoke \
+  --function-name ingest-sync \
+  --payload '{}' \
+  /dev/stdout
+```
+
+The <Tooltip term="lambda" label="Lambda" /> returns a JSON response with sync statistics. Check CloudWatch Logs for structured output including <Tooltip term="trace-id" label="trace_id" /> and `outcome`.
+
+## When to use manual ingest
+
+- First deploy verification before the hourly schedule fires
+- Testing after changing <Tooltip term="lookback-hours" label="lookback_hours" /> or `source_prefix`
+- Recovering from a missed scheduler run (though default `lookback_hours=1` with hourly schedule covers one missed run)
+
+## Verify files copied
+
+After invocation, list raw objects in the data lake:
+
+```bash
+aws s3 ls "s3://$(terraform -chdir=terraform output -raw bucket_name)/raw/rinexhourly/" --recursive | head
+```
+
+New keys follow the pattern `raw/rinexhourly/{year}/{doy}/{filename}`.
+
+## Downstream effects
+
+New <Tooltip term="s3" label="S3" /> objects trigger ObjectCreated notifications to <Tooltip term="process-queue" label="Process_Queue" />. Continue to [SQS Queues](/aws-event-driven-serverless-walkthrough/verification/sqs-queues/) and [Processor Lambda](/aws-event-driven-serverless-walkthrough/verification/processor-lambda/) verification.
+
+## Related usage
+
+For operational ingest outside the scheduler, see [Manual Ingest usage](/aws-event-driven-serverless-walkthrough/usage/manual-ingest/).

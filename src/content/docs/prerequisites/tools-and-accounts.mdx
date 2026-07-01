@@ -1,0 +1,157 @@
+---
+title: Tools and Accounts
+description: Required tools, versions, AWS permissions, and verification commands before deploying the demo.
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import Tooltip from "@/components/Tooltip.astro";
+
+Before cloning the [event-driven-serverless-platform-demo](https://github.com/jajera/event-driven-serverless-platform-demo), confirm your local toolchain and <Tooltip term="aws" label="AWS" /> account access. All <Tooltip term="terraform" label="Terraform" /> commands in this walkthrough run from the **demo repository root** with `-chdir=terraform`.
+
+## Required tools
+
+<table>
+  <thead>
+    <tr>
+      <th>Tool</th>
+      <th>Minimum version</th>
+      <th>Verify command</th>
+      <th>Walkthrough usage</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>AWS CLI</td>
+      <td>v2</td>
+      <td>
+        <code>aws --version</code>
+      </td>
+      <td>Deploy verification, SQS/S3/Lambda checks, SNS subscribe</td>
+    </tr>
+    <tr>
+      <td>
+        <Tooltip term="terraform" label="Terraform" />
+      </td>
+      <td>1.6+</td>
+      <td>
+        <code>terraform --version</code>
+      </td>
+      <td>Full infrastructure provisioning</td>
+    </tr>
+    <tr>
+      <td>Node.js</td>
+      <td>20+</td>
+      <td>
+        <code>node --version</code>
+      </td>
+      <td>
+        Portal build, <Tooltip term="amplify" label="Amplify" /> deploy, unit
+        tests
+      </td>
+    </tr>
+    <tr>
+      <td>npm</td>
+      <td>bundled with Node</td>
+      <td>
+        <code>npm --version</code>
+      </td>
+      <td>Portal dependencies and build</td>
+    </tr>
+    <tr>
+      <td>Python</td>
+      <td>3.14+</td>
+      <td>
+        <code>python3 --version</code>
+      </td>
+      <td>
+        <Tooltip term="lambda" label="Lambda" /> service development and local
+        testing
+      </td>
+    </tr>
+    <tr>
+      <td>Docker</td>
+      <td>with buildx</td>
+      <td>
+        <code>docker buildx version</code>
+      </td>
+      <td>
+        Mirror processor image to <Tooltip term="ecr" label="ECR" /> via{" "}
+        <code>sync-processor-image.sh</code>
+      </td>
+    </tr>
+    <tr>
+      <td>curl</td>
+      <td>any recent</td>
+      <td>
+        <code>curl --version</code>
+      </td>
+      <td>REST API verification</td>
+    </tr>
+    <tr>
+      <td>zip</td>
+      <td>any recent</td>
+      <td>
+        <code>zip --version</code>
+      </td>
+      <td>Amplify manual deploy packaging</td>
+    </tr>
+  </tbody>
+</table>
+
+## Verify your toolchain
+
+Run this block from any directory to confirm all tools are available:
+
+```bash
+aws --version
+terraform --version
+node --version
+npm --version
+python3 --version
+docker buildx version
+curl --version
+zip --version
+```
+
+## AWS account permissions
+
+Your AWS credentials need permission to create and manage resources in the target region (default `ap-southeast-2`):
+
+- **S3** — Data lake bucket, object read/write, notifications
+- **Lambda** — Functions, event source mappings, container images
+- **IAM** — Roles and policies for Lambdas, Scheduler, API Gateway
+- **SQS** — Standard queues and dead-letter queues
+- **DynamoDB** — Jobs table
+- **API Gateway** — REST API and stage deployment
+- **Amplify** — App hosting and branch deploy
+- **EventBridge Scheduler** — Schedule and execution role
+- **CloudWatch** — Alarms, dashboard, logs
+- **ECR** — Repository for processor container image
+- **SNS** — Alarm notification topic
+
+<Aside type="caution">
+  Use a dedicated sandbox account or scoped IAM role for first-time deploys. The
+  full apply creates billable resources including Lambda, S3, and Amplify
+  hosting.
+</Aside>
+
+## Terraform working directory
+
+All Terraform commands in this walkthrough use the demo repo root as the working directory:
+
+```bash
+git clone https://github.com/jajera/event-driven-serverless-platform-demo.git
+cd event-driven-serverless-platform-demo
+
+# Example — init from repo root, not from terraform/
+terraform -chdir=terraform init
+```
+
+<Aside type="tip">
+  Export a default region if your AWS CLI profile does not set one:{" "}
+  <code>export AWS_DEFAULT_REGION=ap-southeast-2</code>
+</Aside>
+
+## Next step
+
+Continue to [System Overview](/aws-event-driven-serverless-walkthrough/architecture/system-overview/) or start deploying with [Terraform Init](/aws-event-driven-serverless-walkthrough/deploy/terraform-init/).

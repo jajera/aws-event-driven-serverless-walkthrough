@@ -1,0 +1,61 @@
+---
+title: CORS Lockdown
+description: Restrict API Gateway CORS to the Amplify portal hostname after first deploy.
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import Tooltip from "@/components/Tooltip.astro";
+
+After the first <Tooltip term="terraform" label="Terraform" /> apply, <Tooltip term="api-gateway" label="API Gateway" /> CORS defaults to permissive settings suitable for initial deployment. Lock CORS to the <Tooltip term="amplify" label="Amplify" /> branch hostname so only the **hosted portal** can call the API from a browser.
+
+## Why lock down CORS
+
+- **Browser clients** (the Amplify portal) require matching `Access-Control-Allow-Origin`
+- **CLI clients** (curl, scripts, Postman) are unaffected — CORS is a browser-only restriction
+
+## Apply CORS lockdown
+
+From the demo repo root:
+
+```bash
+terraform -chdir=terraform apply \
+  -var="region=ap-southeast-2" \
+  -var="amplify_domain=$(terraform -chdir=terraform output -raw cors_domain)"
+```
+
+This sets `amplify_domain` to the deployed Amplify branch hostname. The <Tooltip term="query-api" label="Query" /> and <Tooltip term="reprocess-api" label="Reprocess API" /> Lambdas receive `CORS_ALLOW_ORIGIN` matching that hostname.
+
+## Verify CORS domain
+
+```bash
+terraform -chdir=terraform output -raw cors_domain
+terraform -chdir=terraform output -raw app_url
+```
+
+The CORS domain should match the hostname portion of `app_url`.
+
+<Aside type="note">
+  If you redeploy Amplify to a new branch hostname, re-run this apply with the
+  updated `cors_domain` output.
+</Aside>
+
+## Test browser access
+
+1. Open `app_url` in a browser
+2. Select a station — the catalog and query requests should succeed
+3. If requests fail with CORS errors, confirm this step was applied after the first full deploy
+
+## CLI access unchanged
+
+API Gateway URL works from curl regardless of CORS settings:
+
+```bash
+export API_URL="$(terraform -chdir=terraform output -raw api_url)"
+curl "${API_URL}/catalog"
+```
+
+See [REST API verification](/aws-event-driven-serverless-walkthrough/verification/rest-api/) and [REST API Usage](/aws-event-driven-serverless-walkthrough/usage/rest-api-usage/).
+
+## Next steps
+
+Proceed to [Verification](/aws-event-driven-serverless-walkthrough/verification/eventbridge-scheduler/) to confirm end-to-end behavior.

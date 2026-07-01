@@ -1,0 +1,133 @@
+---
+title: Terraform Init
+description: Initialize Terraform and review the deployment plan for the platform stack.
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import Tooltip from "@/components/Tooltip.astro";
+
+From the [demo repository](https://github.com/jajera/event-driven-serverless-platform-demo) root, initialize <Tooltip term="terraform" label="Terraform" /> before creating any <Tooltip term="aws" label="AWS" /> resources. This walkthrough uses `-chdir=terraform` for all Terraform commands.
+
+## Clone and initialize
+
+```bash
+git clone https://github.com/jajera/event-driven-serverless-platform-demo.git
+cd event-driven-serverless-platform-demo
+
+terraform -chdir=terraform init
+```
+
+Terraform downloads the AWS and archive providers (requires Terraform >= 1.6, AWS provider >= 5.0).
+
+## Review the plan
+
+After init, preview what will be created:
+
+```bash
+terraform -chdir=terraform plan -var="region=ap-southeast-2"
+```
+
+The plan creates resources across five modules: ingest, ingest-scheduler, processing, presentation, and observability. Key defaults:
+
+<table>
+  <thead>
+    <tr>
+      <th>Variable</th>
+      <th>Default</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <code>region</code>
+      </td>
+      <td>
+        <code>ap-southeast-2</code>
+      </td>
+      <td>AWS region</td>
+    </tr>
+    <tr>
+      <td>
+        <code>source_bucket</code>
+      </td>
+      <td>
+        <code>geonet-open-data</code>
+      </td>
+      <td>
+        <Tooltip term="geonet" label="GeoNet" /> public bucket
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>lookback_hours</code>
+      </td>
+      <td>
+        <code>1</code>
+      </td>
+      <td>
+        <Tooltip term="lookback-hours" label="Ingest" /> rolling window (UTC
+        hours)
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>schedule_expression</code>
+      </td>
+      <td>
+        <code>rate(1 hour)</code>
+      </td>
+      <td>
+        <Tooltip term="eventbridge-scheduler" label="Scheduler" /> cadence
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>processor_image_tag</code>
+      </td>
+      <td>
+        <code>latest</code>
+      </td>
+      <td>
+        <Tooltip term="ecr" label="ECR" /> tag (must match sync script)
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>deploy_amplify_on_apply</code>
+      </td>
+      <td>
+        <code>true</code>
+      </td>
+      <td>
+        Build and zip-deploy <Tooltip term="amplify" label="portal" /> on apply
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+See [Terraform Variables](/aws-event-driven-serverless-walkthrough/reference/terraform-variables/) for the full list.
+
+<Aside type="caution">
+  Do **not** run a full `apply` yet. The processor Lambda requires an ECR image
+  mirrored before the processing module can deploy successfully. Continue to
+  [ECR and Processor
+  Image](/aws-event-driven-serverless-walkthrough/deploy/ecr-processor-image/)
+  first.
+</Aside>
+
+## Deployment order
+
+1. [ECR and Processor Image](/aws-event-driven-serverless-walkthrough/deploy/ecr-processor-image/) — create ECR repo and mirror GHCR image
+2. [Staged Apply](/aws-event-driven-serverless-walkthrough/deploy/staged-apply/) — apply processing, then scheduler, then full stack
+3. [Amplify Portal](/aws-event-driven-serverless-walkthrough/deploy/amplify-portal/) — confirm or manually deploy the frontend
+4. [CORS Lockdown](/aws-event-driven-serverless-walkthrough/deploy/cors-lockdown/) — restrict API Gateway CORS to the portal hostname
+
+## Verify init succeeded
+
+```bash
+terraform -chdir=terraform version
+terraform -chdir=terraform providers
+```
+
+Both commands should exit 0 with provider versions listed.

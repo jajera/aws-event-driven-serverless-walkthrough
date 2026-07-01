@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="480" viewBox="0 0 1080 480" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1" gradientUnits="objectBoundingBox">
+      <stop stop-color="#2f2440"/>
+      <stop offset="1" stop-color="#17111f"/>
+    </linearGradient>
+  </defs>
+  <rect width="1080" height="480" rx="12" fill="url(#bg)"/>
+  <rect x="1" y="1" width="1078" height="478" rx="11" stroke="#6d5f95" stroke-width="1" fill="none" opacity="0.45"/>
+  <rect x="410" y="30" width="260" height="44" rx="8" fill="#4a3d66" stroke="#8b7cb8" stroke-width="1.5"/>
+  <text x="540" y="56" text-anchor="middle" fill="#f4f1f8" font-family="sans-serif" font-size="14" font-weight="700">terraform/main.tf</text>
+  <text x="540" y="71" text-anchor="middle" fill="#b8afc8" font-family="sans-serif" font-size="11">root module</text>
+  <line x1="540" y1="74" x2="147.85939561361138" y2="148.50671483341384" stroke="#6d5f95" stroke-width="1.5"/>
+  <polygon points="145,145 140,150 145,155" fill="#6d5f95"/>
+  
+<line x1="540" y1="74" x2="327.56152164374424" y2="147.38783797761562" stroke="#6d5f95" stroke-width="1.5"/>
+  <polygon points="325,145 320,150 325,155" fill="#6d5f95"/>
+  
+<line x1="540" y1="74" x2="540" y2="142" stroke="#6d5f95" stroke-width="1.5"/>
+  <polygon points="535,145 540,150 545,145" fill="#6d5f95"/>
+  
+<line x1="540" y1="74" x2="752.4384783562557" y2="147.38783797761562" stroke="#6d5f95" stroke-width="1.5"/>
+  <polygon points="755,145 760,150 755,155" fill="#6d5f95"/>
+  
+<line x1="540" y1="74" x2="932.1406043863886" y2="148.50671483341384" stroke="#6d5f95" stroke-width="1.5"/>
+  <polygon points="935,145 940,150 935,155" fill="#6d5f95"/>
+  
+  <rect x="56" y="152" width="168" height="72" rx="8" fill="#3d3254" stroke="#6d5f95" stroke-width="1"/>
+  <text x="140" y="178" text-anchor="middle" fill="#f4f1f8" font-family="sans-serif" font-size="13" font-weight="600">ingest</text>
+  <text x="140" y="196" text-anchor="middle" fill="#b8afc8" font-family="sans-serif" font-size="11">S3 data lake</text>
+<text x="140" y="210" text-anchor="middle" fill="#b8afc8" font-family="sans-serif" font-size="11">ingest-sync</text>
+<rect x="236" y="152" width="168" height="72" rx="8" fill="#3d3254" stroke="#6d5f95" stroke-width="1"/>
+  <text x="320" y="178" text-anchor="middle" fill="#f4f1f8" font-family="sans-serif" font-size="13" font-weight="600">ingest-scheduler</text>
+  <text x="320" y="196" text-anchor="middle" fill="#b8afc8" font-family="sans-serif" font-size="11">EventBridge Scheduler</text>
+<text x="320" y="210" text-anchor="middle" fill="#b8afc8" font-family="sans-serif" font-size="11">invoke role</text>
+<rect x="456" y="152" width="168" height="72" rx="8" fill="#3d3254" stroke="#6d5f95" stroke-width="1"/>
+  <text x="540" y="178" text-anchor="middle" fill="#f4f1f8" font-family="sans-serif" font-size="13" font-weight="600">processing</text>
+  <text x="540" y="196" text-anchor="middle" fill="#b8afc8" font-family="sans-serif" font-size="11">SQS / DLQ · S3 notify</text>
+<text x="540" y="210" text-anchor="middle" fill="#b8afc8" font-family="sans-serif" font-size="11">DynamoDB · processor Lambda</text>
+<rect x="676" y="152" width="168" height="72" rx="8" fill="#3d3254" stroke="#6d5f95" stroke-width="1"/>
+  <text x="760" y="178" text-anchor="middle" fill="#f4f1f8" font-family="sans-serif" font-size="13" font-weight="600">presentation</text>
+  <text x="760" y="196" text-anchor="middle" fill="#b8afc8" font-family="sans-serif" font-size="11">query / reprocess APIs</text>
+<text x="760" y="210" text-anchor="middle" fill="#b8afc8" font-family="sans-serif" font-size="11">API GW · Amplify</text>
+<rect x="856" y="152" width="168" height="72" rx="8" fill="#3d3254" stroke="#6d5f95" stroke-width="1"/>
+  <text x="940" y="178" text-anchor="middle" fill="#f4f1f8" font-family="sans-serif" font-size="13" font-weight="600">observability</text>
+  <text x="940" y="196" text-anchor="middle" fill="#b8afc8" font-family="sans-serif" font-size="11">CloudWatch alarms</text>
+<text x="940" y="210" text-anchor="middle" fill="#b8afc8" font-family="sans-serif" font-size="11">SNS · dashboard</text>
+  <line x1="224" y1="188" x2="228" y2="188" stroke="#6d5f95" stroke-width="1.5"/>
+  <polygon points="231,183 236,188 231,193" fill="#6d5f95"/>
+  <text x="230" y="182" text-anchor="middle" fill="#9b92b0" font-family="sans-serif" font-size="10">ingest-sync arn/name</text>
+<polyline points="140,224 140,268 540,268 540,152" fill="none" stroke="#6d5f95" stroke-width="1.5"/>
+  <polygon points="535,157 540,152 545,157" fill="#6d5f95"/>
+  <text x="340" y="262" text-anchor="middle" fill="#9b92b0" font-family="sans-serif" font-size="10">bucket</text>
+<polyline points="140,224 140,292 760,292 760,152" fill="none" stroke="#6d5f95" stroke-width="1.5"/>
+  <polygon points="755,157 760,152 765,157" fill="#6d5f95"/>
+  <text x="450" y="286" text-anchor="middle" fill="#9b92b0" font-family="sans-serif" font-size="10">bucket read</text>
+<polyline points="540,224 540,316 760,316 760,152" fill="none" stroke="#6d5f95" stroke-width="1.5"/>
+  <polygon points="755,157 760,152 765,157" fill="#6d5f95"/>
+  <text x="650" y="310" text-anchor="middle" fill="#9b92b0" font-family="sans-serif" font-size="10">reprocess queue · jobs table</text>
+<polyline points="140,224 140,340 940,340 940,152" fill="none" stroke="#6d5f95" stroke-width="1.5"/>
+  <polygon points="935,157 940,152 945,157" fill="#6d5f95"/>
+  <text x="540" y="334" text-anchor="middle" fill="#9b92b0" font-family="sans-serif" font-size="10">lambda names</text>
+<polyline points="540,224 540,364 940,364 940,152" fill="none" stroke="#6d5f95" stroke-width="1.5"/>
+  <polygon points="935,157 940,152 945,157" fill="#6d5f95"/>
+  <text x="740" y="358" text-anchor="middle" fill="#9b92b0" font-family="sans-serif" font-size="10">queue and lambda names</text>
+<polyline points="760,224 760,388 940,388 940,152" fill="none" stroke="#6d5f95" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <polygon points="935,157 940,152 945,157" fill="#6d5f95"/>
+  <text x="850" y="382" text-anchor="middle" fill="#9b92b0" font-family="sans-serif" font-size="10">optional lambda names</text>
+  <text x="40" y="448" fill="#9b92b0" font-family="sans-serif" font-size="12">Solid arrows — module outputs consumed downstream · dashed — optional when presentation is enabled</text>
+</svg>

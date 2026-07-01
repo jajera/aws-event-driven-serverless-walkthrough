@@ -1,0 +1,58 @@
+---
+title: Event-Driven Serverless Walkthrough
+description: Progressive walkthrough for the AWS event-driven serverless GNSS platform
+template: splash
+hero:
+  tagline: A step-by-step guide to deploying an AWS event-driven platform for GNSS RINEX ingestion, TEC calibration, and visualization
+  actions:
+    - text: Get Started
+      link: /introduction/project-overview/
+      icon: right-arrow
+      variant: primary
+    - text: View on GitHub
+      link: https://github.com/jajera/event-driven-serverless-platform-demo
+      icon: external
+---
+
+import { Card, CardGrid } from "@astrojs/starlight/components";
+import Tooltip from "@/components/Tooltip.astro";
+
+## What you'll build
+
+<CardGrid>
+  <Card
+    title="Event-driven ingest"
+    icon="rocket"
+    link="/architecture/system-overview/"
+  >
+    Scheduled GeoNet RINEX sync into a private S3 data lake via{" "}
+    <Tooltip term="eventbridge-scheduler" label="EventBridge Scheduler" />.
+  </Card>
+  <Card
+    title="Deploy with Terraform"
+    icon="setting"
+    link="/deploy/terraform-init/"
+  >
+    Staged apply from ECR image sync through{" "}
+    <Tooltip term="amplify" label="Amplify" /> portal hosting and CORS lockdown
+    using <Tooltip term="terraform" label="Terraform" />.
+  </Card>
+  <Card
+    title="Verify end-to-end"
+    icon="open-book"
+    link="/verification/eventbridge-scheduler/"
+  >
+    CLI checks for <Tooltip term="sqs" label="SQS" /> queues,{" "}
+    <Tooltip term="lambda" label="Lambda" /> processor,{" "}
+    <Tooltip term="api-gateway" label="REST API" />, portal, and observability.
+  </Card>
+  <Card
+    title="Query and visualize"
+    icon="document"
+    link="/usage/rest-api-usage/"
+  >
+    Catalog, query, and reprocess <Tooltip term="tec" label="TEC" /> data
+    through the <Tooltip term="api-gateway" label="REST API" /> and{" "}
+    <Tooltip term="amplify" label="Amplify" /> portal.
+  </Card>
+</CardGrid>

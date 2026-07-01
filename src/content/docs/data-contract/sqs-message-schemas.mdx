@@ -1,0 +1,192 @@
+---
+title: SQS Message Schemas
+description: Message body shapes for Process_Queue and Reprocess_Queue consumed by the processor Lambda.
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import Tooltip from "@/components/Tooltip.astro";
+
+The <Tooltip term="processor-lambda" label="processor Lambda" /> container consumes messages from two <Tooltip term="sqs" label="SQS" /> queues with separate concurrency limits. Message body shapes are the same structurally; routing differs by queue.
+
+## Queue routing
+
+<table>
+  <thead>
+    <tr>
+      <th>Queue</th>
+      <th>Accepts</th>
+      <th>Source</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <Tooltip term="reprocess-queue" label="Reprocess_Queue" />
+      </td>
+      <td>Shape 1 only</td>
+      <td>
+        <Tooltip term="reprocess-api" label="Reprocess API" /> direct payload
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <Tooltip term="process-queue" label="Process_Queue" />
+      </td>
+      <td>Shape 2 and Shape 3</td>
+      <td>
+        <Tooltip term="s3" label="S3" /> event notifications
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+## Shape 1 — Reprocess API (direct payload)
+
+Sent by the Reprocess_API Lambda when a job is submitted:
+
+```json
+{
+  "key": "raw/rinexhourly/2026/179/auck1790.26o",
+  "job_id": "uuid-v4",
+  "trace_id": "uuid-v4",
+  "parameters": {
+    "NAV_DAY_OFFSET": 2
+  }
+}
+```
+
+<table>
+  <thead>
+    <tr>
+      <th>Field</th>
+      <th>Type</th>
+      <th>Required</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <code>key</code>
+      </td>
+      <td>String</td>
+      <td>Yes</td>
+      <td>
+        Full S3 object key of the raw <Tooltip term="rinex" label="RINEX" />{" "}
+        file
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>job_id</code>
+      </td>
+      <td>String</td>
+      <td>Yes</td>
+      <td>UUID v4 identifying the reprocessing job</td>
+    </tr>
+    <tr>
+      <td>
+        <code>trace_id</code>
+      </td>
+      <td>String</td>
+      <td>Yes</td>
+      <td>UUID v4 for end-to-end correlation</td>
+    </tr>
+    <tr>
+      <td>
+        <code>parameters</code>
+      </td>
+      <td>Object</td>
+      <td>No</td>
+      <td>Override processing parameters (see allowlist below)</td>
+    </tr>
+  </tbody>
+</table>
+
+## Shape 2 — S3 Event Notification (ingest-triggered)
+
+Standard AWS S3 event notification forwarded from the data lake bucket to Process_Queue. The processor reads `Records[0].s3` from the message body to extract bucket and key.
+
+## Shape 3 — SNS-Wrapped S3 Event
+
+<Tooltip term="sns" label="SNS" /> notification wrapping a Shape 2 S3 event in a
+`Message` field. The processor unwraps and processes as Shape 2.
+
+<Aside type="note">
+  S3 `TestEvent` bodies are acknowledged and silently skipped.
+</Aside>
+
+## Allowed `parameters` keys
+
+Only the following parameter names are accepted. Any other key is rejected by the Reprocess API before the message is enqueued.
+
+<table>
+  <thead>
+    <tr>
+      <th>Parameter</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <code>NAV_DAY_OFFSET</code>
+      </td>
+      <td>Integer</td>
+      <td>1</td>
+      <td>
+        Days before observation <Tooltip term="doy" label="DOY" /> to fetch nav
+        files
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>SAVE_PARQUET</code>
+      </td>
+      <td>Boolean</td>
+      <td>true</td>
+      <td>
+        Write <Tooltip term="parquet" label="Parquet" /> output
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>SAVE_CSV</code>
+      </td>
+      <td>Boolean</td>
+      <td>true</td>
+      <td>Write CSV output</td>
+    </tr>
+    <tr>
+      <td>
+        <code>SAVE_JSON</code>
+      </td>
+      <td>Boolean</td>
+      <td>true</td>
+      <td>Write JSON output</td>
+    </tr>
+    <tr>
+      <td>
+        <code>SAVE_STATIC_PLOTS</code>
+      </td>
+      <td>Boolean</td>
+      <td>false</td>
+      <td>Generate static plot images (.png)</td>
+    </tr>
+    <tr>
+      <td>
+        <code>SAVE_INTERACTIVE_PLOTS</code>
+      </td>
+      <td>Boolean</td>
+      <td>false</td>
+      <td>Generate interactive HTML plots</td>
+    </tr>
+  </tbody>
+</table>
+
+## Related pages
+
+- [DynamoDB Jobs Table](/aws-event-driven-serverless-walkthrough/data-contract/dynamodb-jobs-table/) — job status tracking
+- [Reprocess Workflow](/aws-event-driven-serverless-walkthrough/verification/reprocess-workflow/) — end-to-end verification

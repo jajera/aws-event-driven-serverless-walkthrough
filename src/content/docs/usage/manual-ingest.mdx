@@ -1,0 +1,76 @@
+---
+title: Manual Ingest
+description: Trigger ingest-sync Lambda on demand for operational RINEX synchronization.
+---
+
+import Tooltip from "@/components/Tooltip.astro";
+
+Manual ingest invokes the <Tooltip term="ingest-sync" label="Ingest_Sync_Lambda" /> directly, bypassing the <Tooltip term="eventbridge-scheduler" label="EventBridge Scheduler" />. Use it for immediate data population or recovery.
+
+## Invoke ingest-sync
+
+From the demo repo root:
+
+```bash
+aws lambda invoke \
+  --function-name ingest-sync \
+  --payload '{}' \
+  /dev/stdout
+```
+
+## What it does
+
+On each invocation the <Tooltip term="lambda" label="Lambda" />:
+
+1. Reads <Tooltip term="lookback-hours" label="LOOKBACK_HOURS" /> (default 1) to compute a rolling UTC window
+2. Lists objects from `s3://geonet-open-data/gnss/rinexhourly/`
+3. Copies new files to `raw/rinexhourly/{year}/{doy}/{filename}` in the <Tooltip term="data-lake-bucket" label="data lake" />
+4. Skips files already present
+
+## When to use manual ingest
+
+<table>
+  <thead>
+    <tr>
+      <th>Scenario</th>
+      <th>Action</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>First deploy, before scheduler fires</td>
+      <td>Invoke once to seed raw data</td>
+    </tr>
+    <tr>
+      <td>Testing after config change</td>
+      <td>
+        Invoke after updating <code>lookback_hours</code>
+      </td>
+    </tr>
+    <tr>
+      <td>Missed scheduler run</td>
+      <td>
+        Default hourly schedule + 1h lookback covers one miss; invoke if longer
+        gap
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+## Verify results
+
+```bash
+aws s3 ls "s3://$(terraform -chdir=terraform output -raw bucket_name)/raw/rinexhourly/" --recursive | tail -5
+
+aws sqs get-queue-attributes \
+  --queue-url "$(terraform -chdir=terraform output -raw queue_url)" \
+  --attribute-names ApproximateNumberOfMessages
+```
+
+New raw files trigger <Tooltip term="s3" label="S3" /> notifications to <Tooltip term="process-queue" label="Process_Queue" />. The <Tooltip term="processor-lambda" label="processor Lambda" /> consumes messages and writes processed output.
+
+## Related pages
+
+- [Manual Ingest verification](/aws-event-driven-serverless-walkthrough/verification/manual-ingest/)
+- [EventBridge Scheduler](/aws-event-driven-serverless-walkthrough/verification/eventbridge-scheduler/) — automated ingest
+- [S3 Key Patterns](/aws-event-driven-serverless-walkthrough/data-contract/s3-key-patterns/) — raw key layout

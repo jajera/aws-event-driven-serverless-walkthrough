@@ -1,0 +1,89 @@
+---
+title: Staged Apply
+description: Apply Terraform in stages — processing first, then scheduler, then full reconciliation.
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import Tooltip from "@/components/Tooltip.astro";
+
+A staged apply ensures processing resources (<Tooltip term="sqs" label="SQS" />, <Tooltip term="processor-lambda" label="processor Lambda" />, <Tooltip term="dynamodb" label="DynamoDB" />) are ready before the <Tooltip term="eventbridge-scheduler" label="EventBridge Scheduler" /> starts automated ingest. This avoids raw files landing in <Tooltip term="s3" label="S3" /> before the processor can consume them.
+
+## Prerequisites
+
+- [Terraform Init](/aws-event-driven-serverless-walkthrough/deploy/terraform-init/) completed
+- [ECR image mirrored](/aws-event-driven-serverless-walkthrough/deploy/ecr-processor-image/)
+
+## Stage 1 — Processing layer
+
+Create ingest bucket, SQS pipeline, DynamoDB Jobs table, and processor Lambda:
+
+```bash
+terraform -chdir=terraform apply -var="region=ap-southeast-2" -target=module.processing
+```
+
+This also creates the ingest module resources the processing layer depends on (S3 bucket, notifications).
+
+## Stage 2 — Enable ingest scheduler
+
+When processing is healthy, enable scheduled ingest:
+
+```bash
+terraform -chdir=terraform apply -var="region=ap-southeast-2" -target=module.ingest_scheduler
+```
+
+## Stage 3 — Full reconciliation
+
+Apply the remaining resources (presentation, observability, and any drift):
+
+```bash
+terraform -chdir=terraform apply -var="region=ap-southeast-2"
+```
+
+Type `yes` to confirm. Terraform creates resources in dependency order:
+
+1. Ingest layer (S3, ingest-sync Lambda)
+2. Processing layer (SQS, DynamoDB, ECR, processor Lambda)
+3. Presentation layer (API Lambdas, API Gateway, Amplify app)
+4. Portal build + manual Amplify deploy (when `deploy_amplify_on_apply=true`)
+
+## Skip Amplify on apply
+
+If Node.js is unavailable in your CI environment:
+
+```bash
+terraform -chdir=terraform apply -var='deploy_amplify_on_apply=false' -var="region=ap-southeast-2"
+```
+
+Deploy the portal manually — see [Amplify Portal](/aws-event-driven-serverless-walkthrough/deploy/amplify-portal/).
+
+## Single-shot alternative
+
+If you prefer one apply (after ECR sync):
+
+```bash
+terraform -chdir=terraform apply -var="region=ap-southeast-2"
+```
+
+Staged apply is recommended for first-time deploys to control when automated ingest begins.
+
+<Aside type="tip">
+  After full apply, run [CORS
+  Lockdown](/aws-event-driven-serverless-walkthrough/deploy/cors-lockdown/) so
+  the hosted portal can call the API from the browser.
+</Aside>
+
+## Verify apply outputs
+
+```bash
+terraform -chdir=terraform output
+terraform -chdir=terraform output -raw api_url
+terraform -chdir=terraform output -raw bucket_name
+terraform -chdir=terraform output -raw processor_image_uri
+```
+
+See [Terraform Outputs](/aws-event-driven-serverless-walkthrough/reference/terraform-outputs/) for all output values.
+
+## Next steps
+
+- [Amplify Portal](/aws-event-driven-serverless-walkthrough/deploy/amplify-portal/) — confirm portal deployment
+- [Verification](/aws-event-driven-serverless-walkthrough/verification/eventbridge-scheduler/) — end-to-end checks

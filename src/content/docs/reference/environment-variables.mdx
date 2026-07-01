@@ -1,0 +1,330 @@
+---
+title: Environment Variables
+description: Lambda environment variables configured by Terraform for each service.
+---
+
+import Tooltip from "@/components/Tooltip.astro";
+
+Environment variables are set by <Tooltip term="terraform" label="Terraform" /> modules at deploy time. Override behavior via Terraform variables or reprocess job parameters where noted.
+
+## Ingest_Sync_Lambda
+
+<table>
+  <thead>
+    <tr>
+      <th>Variable</th>
+      <th>Source</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <code>LOOKBACK_HOURS</code>
+      </td>
+      <td>
+        <code>lookback_hours</code> (default 1)
+      </td>
+      <td>UTC rolling window for sync (1–168)</td>
+    </tr>
+    <tr>
+      <td>
+        <code>DATA_LAKE_BUCKET</code>
+      </td>
+      <td>ingest module</td>
+      <td>
+        Private <Tooltip term="data-lake-bucket" label="data lake" /> bucket
+        name
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>SOURCE_BUCKET</code>
+      </td>
+      <td>
+        <code>source_bucket</code> (default <code>geonet-open-data</code>)
+      </td>
+      <td>
+        <Tooltip term="geonet" label="GeoNet" /> public bucket
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>SOURCE_PREFIX</code>
+      </td>
+      <td>
+        <code>source_prefix</code> (default <code>gnss/rinexhourly/</code>)
+      </td>
+      <td>Source prefix in public bucket</td>
+    </tr>
+  </tbody>
+</table>
+
+## Processor Lambda (container)
+
+<table>
+  <thead>
+    <tr>
+      <th>Variable</th>
+      <th>Default</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <code>PROCESSOR_MODE</code>
+      </td>
+      <td>
+        <code>lambda</code>
+      </td>
+      <td>Execution mode</td>
+    </tr>
+    <tr>
+      <td>
+        <code>SOURCE_BUCKET</code>
+      </td>
+      <td>data lake bucket</td>
+      <td>
+        Bucket for raw <Tooltip term="rinex" label="RINEX" /> input
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>SOURCE_PREFIX</code>
+      </td>
+      <td>
+        <code>raw/rinexhourly/</code>
+      </td>
+      <td>Raw input prefix</td>
+    </tr>
+    <tr>
+      <td>
+        <code>DESTINATION_BUCKET</code>
+      </td>
+      <td>data lake bucket</td>
+      <td>Bucket for processed output</td>
+    </tr>
+    <tr>
+      <td>
+        <code>DESTINATION_PREFIX</code>
+      </td>
+      <td>
+        <code>processed/tec/</code>
+      </td>
+      <td>Processed output prefix</td>
+    </tr>
+    <tr>
+      <td>
+        <code>NAV_DAY_OFFSET</code>
+      </td>
+      <td>
+        <code>1</code>
+      </td>
+      <td>Default nav file day offset (overridable per reprocess message)</td>
+    </tr>
+    <tr>
+      <td>
+        <code>NUMBA_CACHE_DIR</code>
+      </td>
+      <td>
+        <code>/tmp/numba-cache</code>
+      </td>
+      <td>Numba JIT cache directory</td>
+    </tr>
+    <tr>
+      <td>
+        <code>SAVE_PARQUET</code>
+      </td>
+      <td>
+        <code>true</code>
+      </td>
+      <td>
+        Write <Tooltip term="parquet" label="Parquet" /> output
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>SAVE_CSV</code>
+      </td>
+      <td>
+        <code>true</code>
+      </td>
+      <td>Write CSV output</td>
+    </tr>
+    <tr>
+      <td>
+        <code>SAVE_JSON</code>
+      </td>
+      <td>
+        <code>true</code>
+      </td>
+      <td>Write JSON output</td>
+    </tr>
+    <tr>
+      <td>
+        <code>SAVE_STATIC_PLOTS</code>
+      </td>
+      <td>
+        <code>false</code>
+      </td>
+      <td>Generate PNG plots</td>
+    </tr>
+    <tr>
+      <td>
+        <code>SAVE_INTERACTIVE_PLOTS</code>
+      </td>
+      <td>
+        <code>false</code>
+      </td>
+      <td>Generate HTML plots</td>
+    </tr>
+    <tr>
+      <td>
+        <code>JOBS_TABLE_NAME</code>
+      </td>
+      <td>DynamoDB table name</td>
+      <td>
+        <Tooltip term="jobs-table" label="Jobs table" /> for reprocess status
+        updates
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+Per-job overrides (`NAV_DAY_OFFSET`, `SAVE_*`) are passed via reprocess <Tooltip term="sqs" label="SQS" /> messages. See [SQS Message Schemas](/aws-event-driven-serverless-walkthrough/data-contract/sqs-message-schemas/).
+
+## Query_API Lambda
+
+<table>
+  <thead>
+    <tr>
+      <th>Variable</th>
+      <th>Default</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <code>DATA_LAKE_BUCKET</code>
+      </td>
+      <td>data lake bucket</td>
+      <td>Bucket for processed output reads</td>
+    </tr>
+    <tr>
+      <td>
+        <code>QUERY_MAX_ROWS</code>
+      </td>
+      <td>
+        <code>2000</code>
+      </td>
+      <td>Row cap before response serialization</td>
+    </tr>
+    <tr>
+      <td>
+        <code>QUERY_READ_WORKERS</code>
+      </td>
+      <td>
+        <code>8</code>
+      </td>
+      <td>Parallel S3 read workers per request</td>
+    </tr>
+    <tr>
+      <td>
+        <code>CORS_ALLOW_ORIGIN</code>
+      </td>
+      <td>Amplify hostname</td>
+      <td>
+        Browser CORS origin (set via <code>amplify_domain</code>)
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+## Reprocess_API Lambda
+
+<table>
+  <thead>
+    <tr>
+      <th>Variable</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <code>REPROCESS_QUEUE_URL</code>
+      </td>
+      <td>
+        <Tooltip term="reprocess-queue" label="Reprocess_Queue" /> URL
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>JOBS_TABLE_NAME</code>
+      </td>
+      <td>DynamoDB Jobs table name</td>
+    </tr>
+    <tr>
+      <td>
+        <code>DATA_LAKE_BUCKET</code>
+      </td>
+      <td>Data lake bucket for raw key lookup</td>
+    </tr>
+    <tr>
+      <td>
+        <code>CORS_ALLOW_ORIGIN</code>
+      </td>
+      <td>Browser CORS origin</td>
+    </tr>
+  </tbody>
+</table>
+
+## Terraform variables mapping
+
+Processor concurrency, timeouts, and alarm thresholds are Terraform variables — not Lambda environment variables:
+
+<table>
+  <thead>
+    <tr>
+      <th>Terraform variable</th>
+      <th>Default</th>
+      <th>Effect</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <code>processor_maximum_concurrency</code>
+      </td>
+      <td>15</td>
+      <td>Ingest queue ESM concurrency</td>
+    </tr>
+    <tr>
+      <td>
+        <code>reprocess_maximum_concurrency</code>
+      </td>
+      <td>2</td>
+      <td>Reprocess queue ESM concurrency</td>
+    </tr>
+    <tr>
+      <td>
+        <code>processor_timeout_seconds</code>
+      </td>
+      <td>900</td>
+      <td>
+        <Tooltip term="lambda" label="Lambda" /> timeout
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>processor_memory_mb</code>
+      </td>
+      <td>2048</td>
+      <td>Lambda memory</td>
+    </tr>
+  </tbody>
+</table>
+
+See [Terraform Variables](/aws-event-driven-serverless-walkthrough/reference/terraform-variables/).
