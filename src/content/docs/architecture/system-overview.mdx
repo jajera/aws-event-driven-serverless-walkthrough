@@ -1,0 +1,240 @@
+---
+title: System Overview
+description: Terraform module layout, monorepo structure, apply order, and key design decisions.
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import Tooltip from "@/components/Tooltip.astro";
+
+This page is the technical architecture reference for the [demo repo](https://github.com/jajera/event-driven-serverless-platform-demo). For the end-to-end data flow and walkthrough path, start with [Project Overview](/aws-event-driven-serverless-walkthrough/introduction/project-overview/). For per-component runtime behavior, see [Infrastructure Layers](/aws-event-driven-serverless-walkthrough/architecture/infrastructure-layers/).
+
+The platform is a single monorepo provisioned entirely through <Tooltip term="terraform" label="Terraform" />. Five modules compose the stack; each owns shared resources in its layer rather than duplicating infrastructure definitions.
+
+## Monorepo layout
+
+<table>
+  <thead>
+    <tr>
+      <th>Path</th>
+      <th>Contents</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <code>terraform/</code>
+      </td>
+      <td>
+        Root module and five submodules under <code>terraform/modules/</code>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>services/ingest-sync/</code>
+      </td>
+      <td>
+        <Tooltip term="ingest-sync" label="Ingest-sync Lambda" /> — GeoNet →
+        data lake sync
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>services/query-api/</code>
+      </td>
+      <td>
+        <Tooltip term="query-api" label="Query API" /> — catalog and time-range
+        queries
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>services/reprocess-api/</code>
+      </td>
+      <td>
+        <Tooltip term="reprocess-api" label="Reprocess API" /> — job submission
+        and status
+      </td>
+    </tr>
+    <tr>
+      <td>Container image (external)</td>
+      <td>
+        <Tooltip term="processor-lambda" label="Processor Lambda" /> —{" "}
+        <code>ghcr.io/platformfuzz/tec-processor-image</code>, mirrored to{" "}
+        <Tooltip term="ecr" label="ECR" /> at deploy
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>web/</code>
+      </td>
+      <td>
+        Vite SPA — charts, <Tooltip term="ipp" label="IPP" /> maps, reprocess
+        panel
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>scripts/</code>
+      </td>
+      <td>Deploy helpers (ECR mirror, Amplify zip upload)</td>
+    </tr>
+  </tbody>
+</table>
+
+Zip Lambdas use Python 3.14. The processor runs as a container image, not a zip deployment.
+
+## Five Terraform modules
+
+<table>
+  <thead>
+    <tr>
+      <th>Module</th>
+      <th>Owns</th>
+      <th>Depends on</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <code>ingest</code>
+      </td>
+      <td>
+        <Tooltip term="s3" label="S3" /> data lake,{" "}
+        <Tooltip term="ingest-sync" label="ingest-sync Lambda" />
+      </td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td>
+        <code>ingest-scheduler</code>
+      </td>
+      <td>
+        <Tooltip term="eventbridge-scheduler" label="EventBridge Scheduler" />,{" "}
+        <Tooltip term="iam" label="IAM" /> invoke role
+      </td>
+      <td>ingest (Lambda ARN/name)</td>
+    </tr>
+    <tr>
+      <td>
+        <code>processing</code>
+      </td>
+      <td>
+        <Tooltip term="sqs" label="SQS" />/<Tooltip term="dlq" label="DLQ" />,
+        S3→SQS notification, <Tooltip term="dynamodb" label="DynamoDB" /> Jobs,{" "}
+        <Tooltip term="ecr" label="ECR" />, processor Lambda
+      </td>
+      <td>ingest (bucket)</td>
+    </tr>
+    <tr>
+      <td>
+        <code>presentation</code>
+      </td>
+      <td>
+        <Tooltip term="query-api" label="Query" />/
+        <Tooltip term="reprocess-api" label="reprocess API" /> Lambdas,{" "}
+        <Tooltip term="api-gateway" label="API Gateway" />, Amplify
+      </td>
+      <td>ingest (bucket read), processing (queues, jobs table)</td>
+    </tr>
+    <tr>
+      <td>
+        <code>observability</code>
+      </td>
+      <td>
+        <Tooltip term="cloudwatch" label="CloudWatch" /> alarms,{" "}
+        <Tooltip term="sns" label="SNS" /> topic, dashboard
+      </td>
+      <td>ingest, processing (and presentation when enabled)</td>
+    </tr>
+  </tbody>
+</table>
+
+Layer enable flags gate module creation:
+
+| Variable              | Module         |
+| --------------------- | -------------- |
+| `enable_ingest`       | `ingest`       |
+| `enable_processing`   | `processing`   |
+| `enable_presentation` | `presentation` |
+
+Processing requires ingest. Presentation requires processing. The scheduler and observability modules follow the enabled layers they monitor.
+
+![Terraform module dependency diagram: root module fans out to ingest, ingest-scheduler, processing, presentation, and observability with cross-module output dependencies](/aws-event-driven-serverless-walkthrough/terraform-modules-diagram.svg)
+
+The modules table above maps each resource to its owning module.
+
+## Staged apply order
+
+Processing must exist before automated ingest starts — otherwise raw <Tooltip term="rinex" label="RINEX" /> files land in <Tooltip term="s3" label="S3" /> with no consumer.
+
+Recommended sequence:
+
+1. **Processing** — SQS, processor Lambda, DynamoDB Jobs table (creates ingest bucket dependencies)
+2. **Ingest scheduler** — <Tooltip term="eventbridge-scheduler" label="EventBridge Scheduler" /> once processing is healthy
+3. **Full apply** — presentation, observability, and reconciliation
+
+Commands and Amplify options are in [Staged Apply](/aws-event-driven-serverless-walkthrough/deploy/staged-apply/).
+
+## Key design decisions
+
+### Provisioning and compute
+
+| Decision                      | Rationale                                                     |
+| ----------------------------- | ------------------------------------------------------------- |
+| Terraform-only IaC            | Single workflow; no drift between tools                       |
+| Processor as Lambda container | SQS-triggered container image — see design notes below        |
+| External container image      | Built independently; mirrored to ECR at deploy time           |
+| Python 3.14 zip Lambdas       | Ingest, query, and reprocess use managed runtime `python3.14` |
+
+### Eventing and queues
+
+| Decision                                                               | Rationale                                                      |
+| ---------------------------------------------------------------------- | -------------------------------------------------------------- |
+| <Tooltip term="eventbridge-scheduler" label="EventBridge Scheduler" /> | Recurring UTC triggers with dedicated invoke roles             |
+| SQS standard queues                                                    | Processing order irrelevant; higher throughput than FIFO       |
+| Dual queues (ingest vs reprocess)                                      | Separate concurrency caps — operator jobs do not starve ingest |
+| Visibility timeout 900s                                                | Covers processor execution and SQS retry window                |
+
+### Data layout and API
+
+| Decision                                                  | Rationale                                                                                        |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| <Tooltip term="parquet" label="Parquet" /> primary output | Efficient range scans; JSON fallback when `pyarrow` unavailable                                  |
+| Deterministic output keys                                 | Idempotent reprocessing via safe overwrites                                                      |
+| Prefix-based catalog                                      | Stations and dates from `processed/tec/station=.../year=.../doy=...` layout — not S3 Annotations |
+| <Tooltip term="dynamodb" label="DynamoDB" /> for jobs     | Low-latency `job_id` lookups; no joins required                                                  |
+| NaN sanitization in Query API                             | Non-finite floats become JSON `null` for browser compatibility                                   |
+
+<Aside type="note">
+  **Also considered — AWS Batch on Fargate:** An earlier design used Batch to
+  scale **parallel calibration workers** as ingest volume grew. A limit-increase
+  request for higher Batch/Fargate parallel execution was **rejected**, so the
+  same container image (<code>ghcr.io/platformfuzz/tec-processor-image</code>)
+  runs as an SQS-triggered{" "}
+  <Tooltip term="processor-lambda" label="Lambda container" /> instead — each
+  invocation pulls one message from{" "}
+  <Tooltip term="process-queue" label="Process_Queue" /> or{" "}
+  <Tooltip term="reprocess-queue" label="Reprocess_Queue" />. Parallelism comes
+  from SQS event-source concurrency, not a Batch compute environment. Trade-off:
+  900s Lambda timeout and Lambda concurrency caps vs Batch worker scaling.
+</Aside>
+
+<Aside type="note">
+  **Also removed — S3 Annotations:** S3 Annotations and annotations-indexer were
+  explored for catalog discovery. The current deployment uses **prefix-based
+  listing** on processed output keys under <code>processed/tec/</code>.
+</Aside>
+
+## Observability
+
+All Lambdas emit structured JSON logs with <Tooltip term="trace-id" label="trace_id" />, `duration_ms`, `outcome`, and error fields on failure. The `observability` module provisions alarms (DLQ depth, processor health, queue backlog, ingest-sync errors), an SNS topic, and the **`event-driven-platform`** dashboard.
+
+Alarm names, subscription steps, and dashboard verification are in [Alarms and Dashboard](/aws-event-driven-serverless-walkthrough/verification/alarms-dashboard/).
+
+## Related pages
+
+- [Project Overview](/aws-event-driven-serverless-walkthrough/introduction/project-overview/) — what you build and walkthrough path
+- [Infrastructure Layers](/aws-event-driven-serverless-walkthrough/architecture/infrastructure-layers/) — ingest, processing, presentation runtime detail
+- [Staged Apply](/aws-event-driven-serverless-walkthrough/deploy/staged-apply/) — recommended Terraform apply order
+- [Terraform Variables](/aws-event-driven-serverless-walkthrough/reference/terraform-variables/) and [Terraform Outputs](/aws-event-driven-serverless-walkthrough/reference/terraform-outputs/) — configuration reference
+- [Data Contract](/aws-event-driven-serverless-walkthrough/data-contract/sqs-message-schemas/) — SQS, DynamoDB, S3 keys, and API schemas

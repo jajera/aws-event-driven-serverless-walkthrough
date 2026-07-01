@@ -1,0 +1,143 @@
+---
+title: REST API Usage
+description: Operational guide for catalog, query, and reprocess endpoints via API Gateway.
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import Tooltip from "@/components/Tooltip.astro";
+
+The <Tooltip term="api-gateway" label="REST API" /> is the primary programmatic interface for catalog discovery, <Tooltip term="tec" label="TEC" /> queries, and reprocessing. Use `api_url` from <Tooltip term="terraform" label="Terraform" /> outputs — CORS does not apply to curl and server-side clients.
+
+## Setup
+
+From the demo repo root:
+
+```bash
+export API_URL="$(terraform -chdir=terraform output -raw api_url)"
+echo "$API_URL"
+```
+
+## Catalog — discover stations and dates
+
+List all stations with processed output:
+
+```bash
+curl "${API_URL}/catalog"
+```
+
+List available dates for a station:
+
+```bash
+curl -s "${API_URL}/catalog?station=auck" | jq .
+```
+
+Catalog derives stations and dates from processed <Tooltip term="s3" label="S3" /> key prefixes under `processed/tec/`. Raw ingest alone does not populate the catalog.
+
+## Query — fetch TEC time series
+
+```bash
+curl -s "${API_URL}/query?station=auck&start_time=2026-06-28T00:00:00Z&end_time=2026-06-28T23:59:59Z&sv=G01" | jq .
+```
+
+### Query tips
+
+<table>
+  <thead>
+    <tr>
+      <th>Scenario</th>
+      <th>Recommendation</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Full-day query on a busy station</td>
+      <td>
+        Add <code>&amp;sv=G01</code> (or another satellite) to reduce row count
+      </td>
+    </tr>
+    <tr>
+      <td>Large result sets</td>
+      <td>
+        Check <code>meta.truncated</code>; narrow time range or add{" "}
+        <code>sv</code> filter
+      </td>
+    </tr>
+    <tr>
+      <td>Max time range</td>
+      <td>
+        7 days between <code>start_time</code> and <code>end_time</code>
+      </td>
+    </tr>
+    <tr>
+      <td>Row cap</td>
+      <td>
+        Default 2000 rows (<code>QUERY_MAX_ROWS</code>)
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+## Reprocess — submit and poll jobs
+
+Submit:
+
+```bash
+JOB=$(curl -s -X POST "${API_URL}/reprocess" \
+  -H "Content-Type: application/json" \
+  -d '{"station": "auck", "year": 2026, "doy": 179, "parameters": {"NAV_DAY_OFFSET": 2}}')
+echo "$JOB"
+```
+
+Poll:
+
+```bash
+JOB_ID=$(echo "$JOB" | python3 -c "import sys,json; print(json.load(sys.stdin)['job_id'])")
+curl "${API_URL}/reprocess/${JOB_ID}"
+```
+
+Supported `parameters` keys: `NAV_DAY_OFFSET`, `SAVE_PARQUET`, `SAVE_CSV`, `SAVE_JSON`, `SAVE_STATIC_PLOTS`, `SAVE_INTERACTIVE_PLOTS`. Any other key returns HTTP 400.
+
+## Browser vs CLI
+
+<table>
+  <thead>
+    <tr>
+      <th>Client</th>
+      <th>URL</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>curl, scripts, Postman</td>
+      <td>
+        <code>api_url</code>
+      </td>
+      <td>No CORS restrictions</td>
+    </tr>
+    <tr>
+      <td>
+        <Tooltip term="amplify" label="Amplify" /> portal
+      </td>
+      <td>
+        <code>app_url</code>
+      </td>
+      <td>
+        Requires [CORS
+        Lockdown](/aws-event-driven-serverless-walkthrough/deploy/cors-lockdown/)
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<Aside type="tip">
+  For interactive visualization, use the
+  [Portal](/aws-event-driven-serverless-walkthrough/usage/portal-usage/). The
+  portal calls the same API endpoints from the browser.
+</Aside>
+
+## Schema reference
+
+- [API Response Schemas](/aws-event-driven-serverless-walkthrough/data-contract/api-response-schemas/)
+- [Parquet Output](/aws-event-driven-serverless-walkthrough/data-contract/parquet-output/)
+- [REST API verification](/aws-event-driven-serverless-walkthrough/verification/rest-api/)

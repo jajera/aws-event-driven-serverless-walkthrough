@@ -1,0 +1,80 @@
+---
+title: SQS Queues
+description: Verify Process_Queue receives ingest messages after raw files land in S3.
+---
+
+import Tooltip from "@/components/Tooltip.astro";
+
+<Tooltip term="sqs" label="SQS" /> queues decouple ingest notifications from
+<Tooltip term="processor-lambda" label="processor" /> execution. Verify messages
+flow into <Tooltip term="process-queue" label="Process_Queue" /> after raw
+<Tooltip term="rinex" label="RINEX" /> files appear in the
+<Tooltip term="data-lake-bucket" label="data lake" />.
+
+## Check Process_Queue depth
+
+From the demo repo root, after new objects land under `raw/rinexhourly/`:
+
+```bash
+aws sqs get-queue-attributes \
+  --queue-url "$(terraform -chdir=terraform output -raw queue_url)" \
+  --attribute-names ApproximateNumberOfMessages
+```
+
+Expect `ApproximateNumberOfMessages` to decrease as the processor consumes messages. A non-zero count immediately after ingest is normal.
+
+## Check in-flight messages
+
+```bash
+aws sqs get-queue-attributes \
+  --queue-url "$(terraform -chdir=terraform output -raw queue_url)" \
+  --attribute-names ApproximateNumberOfMessages ApproximateNumberOfMessagesNotVisible
+```
+
+`ApproximateNumberOfMessagesNotVisible` reflects messages currently being processed (visibility timeout 900s).
+
+## Check Reprocess_Queue
+
+```bash
+aws sqs get-queue-attributes \
+  --queue-url "$(terraform -chdir=terraform output -raw reprocess_queue_url)" \
+  --attribute-names ApproximateNumberOfMessages
+```
+
+Reprocess_Queue stays empty until you submit a job via the <Tooltip term="reprocess-api" label="Reprocess API" />. See [Reprocess Workflow](/aws-event-driven-serverless-walkthrough/verification/reprocess-workflow/).
+
+## Queue configuration
+
+<table>
+  <thead>
+    <tr>
+      <th>Queue</th>
+      <th>Trigger</th>
+      <th>Concurrency cap</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Process_Queue</td>
+      <td>
+        <Tooltip term="s3" label="S3" /> ObjectCreated on raw keys
+      </td>
+      <td>
+        <code>processor_maximum_concurrency</code> (default 15)
+      </td>
+    </tr>
+    <tr>
+      <td>Reprocess_Queue</td>
+      <td>Reprocess API</td>
+      <td>
+        <code>reprocess_maximum_concurrency</code> (default 2)
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+Both use `batch_size=1` and <Tooltip term="dlq" label="dead-letter queues" /> after 5 failed receives.
+
+## Troubleshooting
+
+If messages accumulate without draining, check [Processor Lambda](/aws-event-driven-serverless-walkthrough/verification/processor-lambda/) and [Common Issues — SQS](/aws-event-driven-serverless-walkthrough/troubleshooting/common-issues/#sqs-queues).

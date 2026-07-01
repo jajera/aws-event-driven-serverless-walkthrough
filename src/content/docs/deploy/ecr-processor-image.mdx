@@ -1,0 +1,98 @@
+---
+title: ECR and Processor Image
+description: Create the ECR repository and mirror the processor container image from GHCR before full apply.
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import Tooltip from "@/components/Tooltip.astro";
+
+The <Tooltip term="processor-lambda" label="processor Lambda" /> runs as a **container image** sourced from `ghcr.io/platformfuzz/tec-processor-image`. <Tooltip term="terraform" label="Terraform" /> creates an <Tooltip term="ecr" label="ECR" /> repository; you mirror the image before applying the full processing stack.
+
+## Step 1 — Create the ECR repository
+
+From the demo repo root, target only the ECR resource:
+
+```bash
+terraform -chdir=terraform apply -target=module.processing[0].aws_ecr_repository.processor_image
+```
+
+Type `yes` when prompted. This creates the `tec-processor-image` ECR repository without deploying the processor Lambda yet.
+
+## Step 2 — Mirror the image from GHCR to ECR
+
+```bash
+./scripts/sync-processor-image.sh
+```
+
+By default the script syncs the `latest` tag, which must match `processor_image_tag` in Terraform (default: `latest`).
+
+To use a specific tag:
+
+```bash
+./scripts/sync-processor-image.sh <tag>
+```
+
+<Aside type="note">
+  The tag must resolve to a **single-platform** Docker v2 or OCI manifest — not
+  a multi-arch index. The script validates the manifest type before pushing.
+</Aside>
+
+## Verify the manifest (optional)
+
+Before mirroring, confirm the GHCR tag is single-platform:
+
+```bash
+docker manifest inspect ghcr.io/platformfuzz/tec-processor-image:latest
+```
+
+## Prerequisites
+
+- Docker with `buildx` support (`docker buildx version`)
+- AWS CLI credentials with ECR push permissions
+- ECR repository created in Step 1
+
+## Use a different image tag
+
+```bash
+./scripts/sync-processor-image.sh <tag>
+terraform -chdir=terraform apply -var="processor_image_tag=<tag>"
+```
+
+## Troubleshooting
+
+<table>
+  <thead>
+    <tr>
+      <th>Symptom</th>
+      <th>Fix</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>ECR push denied</td>
+      <td>
+        Confirm AWS credentials and <code>aws ecr get-login-password</code>{" "}
+        region
+      </td>
+    </tr>
+    <tr>
+      <td>Multi-arch manifest rejected</td>
+      <td>
+        Pick a single-platform tag or inspect with{" "}
+        <code>docker manifest inspect</code>
+      </td>
+    </tr>
+    <tr>
+      <td>Processor Lambda fails on apply</td>
+      <td>
+        Ensure tag in ECR matches <code>processor_image_tag</code> variable
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+See [Common Issues — Processor Lambda](/aws-event-driven-serverless-walkthrough/troubleshooting/common-issues/#processor-lambda) for post-deploy image problems.
+
+## Next step
+
+Continue to [Staged Apply](/aws-event-driven-serverless-walkthrough/deploy/staged-apply/) once the image is in ECR.

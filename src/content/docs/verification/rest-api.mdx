@@ -1,0 +1,130 @@
+---
+title: REST API
+description: Test catalog and query endpoints via API Gateway using curl.
+---
+
+import Tooltip from "@/components/Tooltip.astro";
+
+The <Tooltip term="api-gateway" label="REST API" /> is served through API Gateway. CORS does not apply to curl and scripts — use `api_url` directly.
+
+## Set API URL
+
+From the demo repo root:
+
+```bash
+export API_URL="$(terraform -chdir=terraform output -raw api_url)"
+echo "$API_URL"
+```
+
+## List available stations
+
+Catalog uses prefix-based discovery on processed output:
+
+```bash
+curl "${API_URL}/catalog"
+```
+
+Response:
+
+```json
+{
+  "stations": ["AUCK", "AVLN", "WGTN"]
+}
+```
+
+## List dates for a station
+
+```bash
+curl -s "${API_URL}/catalog?station=auck" | jq .
+```
+
+Response:
+
+```json
+{
+  "dates": [
+    { "year": 2026, "doy": 179 },
+    { "year": 2026, "doy": 178 }
+  ]
+}
+```
+
+## Query TEC data
+
+Use `sv` on full-day requests for busy stations:
+
+```bash
+curl -s "${API_URL}/query?station=auck&start_time=2026-06-28T00:00:00Z&end_time=2026-06-28T23:59:59Z&sv=G01" | jq .meta
+```
+
+Expected meta:
+
+```json
+{ "row_count": 519, "truncated": false }
+```
+
+## Query constraints
+
+<table>
+  <thead>
+    <tr>
+      <th>Parameter</th>
+      <th>Constraint</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <code>station</code>
+      </td>
+      <td>4 alphanumeric characters</td>
+    </tr>
+    <tr>
+      <td>
+        <code>start_time</code> / <code>end_time</code>
+      </td>
+      <td>ISO 8601 UTC; max 7-day range</td>
+    </tr>
+    <tr>
+      <td>
+        <code>sv</code>
+      </td>
+      <td>Optional satellite filter (recommended for full-day queries)</td>
+    </tr>
+  </tbody>
+</table>
+
+See [API Response Schemas](/aws-event-driven-serverless-walkthrough/data-contract/api-response-schemas/) and [REST API Usage](/aws-event-driven-serverless-walkthrough/usage/rest-api-usage/).
+
+## Browser vs CLI
+
+<table>
+  <thead>
+    <tr>
+      <th>Client</th>
+      <th>URL</th>
+      <th>CORS</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>curl / scripts</td>
+      <td>
+        <code>api_url</code>
+      </td>
+      <td>Not applicable</td>
+    </tr>
+    <tr>
+      <td>
+        <Tooltip term="amplify" label="Amplify" /> portal
+      </td>
+      <td>
+        <code>app_url</code> (calls <code>api_url</code> internally)
+      </td>
+      <td>
+        Requires [CORS
+        Lockdown](/aws-event-driven-serverless-walkthrough/deploy/cors-lockdown/)
+      </td>
+    </tr>
+  </tbody>
+</table>

@@ -1,0 +1,260 @@
+---
+title: API Response Schemas
+description: REST API request and response schemas for catalog, query, and reprocess endpoints.
+---
+
+import Tooltip from "@/components/Tooltip.astro";
+
+## Query parameters — GET /query
+
+<table>
+  <thead>
+    <tr>
+      <th>Parameter</th>
+      <th>Required</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <code>station</code>
+      </td>
+      <td>Yes</td>
+      <td>4 alphanumeric characters (case-insensitive)</td>
+    </tr>
+    <tr>
+      <td>
+        <code>start_time</code>
+      </td>
+      <td>Yes</td>
+      <td>ISO 8601 UTC timestamp</td>
+    </tr>
+    <tr>
+      <td>
+        <code>end_time</code>
+      </td>
+      <td>Yes</td>
+      <td>ISO 8601 UTC timestamp (inclusive range, max 7 days)</td>
+    </tr>
+    <tr>
+      <td>
+        <code>sv</code>
+      </td>
+      <td>No</td>
+      <td>
+        Satellite filter (e.g. <code>G01</code>); recommended for full-day
+        queries on busy stations
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+## Query success response (HTTP 200)
+
+```json
+{
+  "data": [
+    {
+      "epoch": "2024-05-29T01:00:00Z",
+      "sv": "G01",
+      "id_arc": 1,
+      "lat_ipp": -36.85,
+      "lon_ipp": 174.76,
+      "azi": 45.2,
+      "ele": 30.1,
+      "bias": 0.5,
+      "stec": 12.3,
+      "vtec": 8.7,
+      "veq": 9.1
+    }
+  ],
+  "meta": {
+    "row_count": 1,
+    "truncated": false
+  }
+}
+```
+
+### Meta object
+
+<table>
+  <thead>
+    <tr>
+      <th>Field</th>
+      <th>Type</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <code>row_count</code>
+      </td>
+      <td>Integer</td>
+      <td>
+        Number of rows in the <code>data</code> array
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>truncated</code>
+      </td>
+      <td>Boolean</td>
+      <td>
+        <code>true</code> if rows were capped by <code>QUERY_MAX_ROWS</code>{" "}
+        (default 2000) or trimmed under the Lambda response limit (~5.5 MB)
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+## Catalog response — stations (HTTP 200)
+
+`GET /catalog`
+
+```json
+{
+  "stations": ["AUCK", "AVLN", "WGTN"]
+}
+```
+
+## Catalog response — dates (HTTP 200)
+
+`GET /catalog?station=AUCK`
+
+```json
+{
+  "dates": [
+    { "year": 2024, "doy": 150 },
+    { "year": 2024, "doy": 149 }
+  ]
+}
+```
+
+## Error responses
+
+### HTTP 400
+
+```json
+{
+  "error": "Missing required parameter: station"
+}
+```
+
+### HTTP 404
+
+```json
+{
+  "error": "Job not found: \{job_id\}"
+}
+```
+
+### HTTP 500
+
+```json
+{
+  "error": "Internal server error"
+}
+```
+
+Catalog endpoints return HTTP 500 when `DATA_LAKE_BUCKET` is missing or when <Tooltip term="s3" label="S3" /> listing fails.
+
+## Reprocess request — POST /reprocess
+
+```json
+{
+  "station": "AUCK",
+  "year": 2024,
+  "doy": 150,
+  "parameters": {
+    "NAV_DAY_OFFSET": 2
+  }
+}
+```
+
+<table>
+  <thead>
+    <tr>
+      <th>Field</th>
+      <th>Type</th>
+      <th>Required</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <code>station</code>
+      </td>
+      <td>String</td>
+      <td>Yes</td>
+      <td>4 alphanumeric characters</td>
+    </tr>
+    <tr>
+      <td>
+        <code>year</code>
+      </td>
+      <td>Integer</td>
+      <td>Yes</td>
+      <td>2000–2099</td>
+    </tr>
+    <tr>
+      <td>
+        <code>doy</code>
+      </td>
+      <td>Integer</td>
+      <td>Yes</td>
+      <td>1–366</td>
+    </tr>
+    <tr>
+      <td>
+        <code>parameters</code>
+      </td>
+      <td>Object</td>
+      <td>No</td>
+      <td>
+        Override parameters (see [SQS Message
+        Schemas](/aws-event-driven-serverless-walkthrough/data-contract/sqs-message-schemas/))
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+## Reprocess response — POST (HTTP 202)
+
+```json
+{
+  "job_id": "uuid-v4",
+  "status": "queued",
+  "trace_id": "uuid-v4"
+}
+```
+
+## Reprocess response — GET /reprocess/\{job_id\} (HTTP 200)
+
+```json
+{
+  "job_id": "uuid-v4",
+  "station": "AUCK",
+  "year": 2024,
+  "doy": 150,
+  "status": "completed",
+  "output_key": "processed/tec/station=auck/year=2026/doy=179/auck1790.parquet",
+  "trace_id": "uuid-v4",
+  "created_at": "2024-05-29T00:00:00Z",
+  "updated_at": "2024-05-29T00:05:00Z"
+}
+```
+
+## Example curl commands
+
+```bash
+export API_URL="$(terraform -chdir=terraform output -raw api_url)"
+
+curl "${API_URL}/catalog"
+curl -s "${API_URL}/catalog?station=auck" | jq .
+curl -s "${API_URL}/query?station=auck&start_time=2026-06-28T00:00:00Z&end_time=2026-06-28T23:59:59Z&sv=G01" | jq .meta
+```
+
+See [REST API Usage](/aws-event-driven-serverless-walkthrough/usage/rest-api-usage/) for operational guidance.

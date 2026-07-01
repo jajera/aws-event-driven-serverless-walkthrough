@@ -1,0 +1,189 @@
+---
+title: DynamoDB Jobs Table
+description: Jobs table schema, attributes, and status lifecycle for reprocessing jobs.
+---
+
+import Tooltip from "@/components/Tooltip.astro";
+
+The <Tooltip term="jobs-table" label="Jobs table" /> tracks reprocessing jobs submitted through the <Tooltip term="reprocess-api" label="Reprocess API" />. The <Tooltip term="processor-lambda" label="processor Lambda" /> updates status when a `job_id` is present in the <Tooltip term="sqs" label="SQS" /> message.
+
+## Table design
+
+- **Partition key:** `job_id` (String) — no sort key
+- **Provisioned by:** `processing` <Tooltip term="terraform" label="Terraform" /> module
+
+## Attributes
+
+<table>
+  <thead>
+    <tr>
+      <th>Attribute</th>
+      <th>Type</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <code>job_id</code> (PK)
+      </td>
+      <td>String</td>
+      <td>UUID v4 — unique job identifier</td>
+    </tr>
+    <tr>
+      <td>
+        <code>station</code>
+      </td>
+      <td>String</td>
+      <td>
+        4-character alphanumeric <Tooltip term="gnss" label="GNSS" /> station
+        identifier
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>year</code>
+      </td>
+      <td>Number</td>
+      <td>4-digit year (2000–2099)</td>
+    </tr>
+    <tr>
+      <td>
+        <code>doy</code>
+      </td>
+      <td>Number</td>
+      <td>
+        <Tooltip term="doy" label="Day of year" /> (1–366)
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>parameters</code>
+      </td>
+      <td>Map</td>
+      <td>Processing parameter overrides submitted with the job</td>
+    </tr>
+    <tr>
+      <td>
+        <code>status</code>
+      </td>
+      <td>String</td>
+      <td>
+        One of: <code>queued</code>, <code>processing</code>,{" "}
+        <code>completed</code>, <code>failed</code>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>output_key</code>
+      </td>
+      <td>String</td>
+      <td>
+        <Tooltip term="s3" label="S3" /> key of primary output file (set on
+        completion)
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>error_type</code>
+      </td>
+      <td>String</td>
+      <td>Exception class name (set on failure)</td>
+    </tr>
+    <tr>
+      <td>
+        <code>error_message</code>
+      </td>
+      <td>String</td>
+      <td>Error details (set on failure)</td>
+    </tr>
+    <tr>
+      <td>
+        <code>trace_id</code>
+      </td>
+      <td>String</td>
+      <td>UUID v4 correlation ID</td>
+    </tr>
+    <tr>
+      <td>
+        <code>created_at</code>
+      </td>
+      <td>String</td>
+      <td>ISO 8601 UTC timestamp</td>
+    </tr>
+    <tr>
+      <td>
+        <code>updated_at</code>
+      </td>
+      <td>String</td>
+      <td>ISO 8601 UTC timestamp</td>
+    </tr>
+  </tbody>
+</table>
+
+## Status lifecycle
+
+```text
+queued → processing → completed
+                    → failed
+```
+
+<table>
+  <thead>
+    <tr>
+      <th>Status</th>
+      <th>Meaning</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <strong>queued</strong>
+      </td>
+      <td>Job record created, SQS message enqueued</td>
+    </tr>
+    <tr>
+      <td>
+        <strong>processing</strong>
+      </td>
+      <td>Processor Lambda has started the message</td>
+    </tr>
+    <tr>
+      <td>
+        <strong>completed</strong>
+      </td>
+      <td>
+        Calibration succeeded, <code>output_key</code> populated
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <strong>failed</strong>
+      </td>
+      <td>
+        Processing failed after retries or <Tooltip term="dlq" label="DLQ" />{" "}
+        routing
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+## Lookup from Terraform
+
+```bash
+terraform -chdir=terraform output -raw jobs_table_name
+```
+
+## Poll via API
+
+```bash
+export API_URL="$(terraform -chdir=terraform output -raw api_url)"
+curl "${API_URL}/reprocess/${JOB_ID}"
+```
+
+See [API Response Schemas](/aws-event-driven-serverless-walkthrough/data-contract/api-response-schemas/) for the GET response format.
+
+## Related pages
+
+- [SQS Message Schemas](/aws-event-driven-serverless-walkthrough/data-contract/sqs-message-schemas/) — Shape 1 reprocess messages
+- [Reprocess Workflow](/aws-event-driven-serverless-walkthrough/verification/reprocess-workflow/)

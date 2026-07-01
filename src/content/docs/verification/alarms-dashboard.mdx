@@ -1,0 +1,121 @@
+---
+title: Alarms and Dashboard
+description: Subscribe to SNS alarm notifications and verify CloudWatch alarms and dashboard.
+---
+
+import Tooltip from "@/components/Tooltip.astro";
+
+<Tooltip term="cloudwatch" label="CloudWatch" /> alarms monitor
+<Tooltip term="dlq" label="DLQ" /> depth, processor health, queue backlog, and
+ingest-sync errors. Wire <Tooltip term="sns" label="SNS" /> notifications for
+operational visibility.
+
+## Subscribe to alarm notifications
+
+From the demo repo root:
+
+```bash
+TOPIC_ARN="$(terraform -chdir=terraform output -raw alarm_topic_arn)"
+
+aws sns subscribe \
+  --topic-arn "$TOPIC_ARN" \
+  --protocol email \
+  --notification-endpoint "you@example.com"
+```
+
+Confirm the subscription from your email inbox.
+
+## Verify alarms exist
+
+```bash
+aws cloudwatch describe-alarms --alarm-names \
+  dlq-messages-visible reprocess-dlq-messages-visible \
+  processor-lambda-errors processor-lambda-throttles \
+  process-queue-stale-messages reprocess-queue-stale-messages \
+  process-queue-messages-visible ingest-sync-errors \
+  --query 'MetricAlarms[].{Name:AlarmName,State:StateValue}'
+```
+
+All alarms should exist. `StateValue` of `OK` is healthy; `ALARM` warrants investigation.
+
+## Open the dashboard
+
+```bash
+terraform -chdir=terraform output -raw cloudwatch_dashboard_name
+```
+
+Dashboard name: **`event-driven-platform`**. Open it in the CloudWatch console for your region.
+
+The dashboard shows:
+
+- Alarm status summary
+- Queue depth and message age
+- <Tooltip term="processor-lambda" label="Processor Lambda" /> throughput and
+  concurrency
+- Lambda metrics for deployed layers
+
+## Alarm reference
+
+<table>
+  <thead>
+    <tr>
+      <th>Alarm</th>
+      <th>Indicates</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <code>dlq-messages-visible</code>
+      </td>
+      <td>Ingest pipeline failures after 5 retries</td>
+    </tr>
+    <tr>
+      <td>
+        <code>reprocess-dlq-messages-visible</code>
+      </td>
+      <td>Reprocess job failures after 5 retries</td>
+    </tr>
+    <tr>
+      <td>
+        <code>processor-lambda-errors</code>
+      </td>
+      <td>Processor invocation errors</td>
+    </tr>
+    <tr>
+      <td>
+        <code>processor-lambda-throttles</code>
+      </td>
+      <td>Concurrency quota exhaustion</td>
+    </tr>
+    <tr>
+      <td>
+        <code>process-queue-messages-visible</code>
+      </td>
+      <td>
+        <Tooltip term="process-queue" label="Ingest backlog" /> (threshold
+        default 100)
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>process-queue-stale-messages</code>
+      </td>
+      <td>Messages older than 1800s on process queue</td>
+    </tr>
+    <tr>
+      <td>
+        <code>reprocess-queue-stale-messages</code>
+      </td>
+      <td>Stale messages on reprocess queue</td>
+    </tr>
+    <tr>
+      <td>
+        <code>ingest-sync-errors</code>
+      </td>
+      <td>Scheduled ingest failures</td>
+    </tr>
+  </tbody>
+</table>
+
+See [Common Issues](/aws-event-driven-serverless-walkthrough/troubleshooting/common-issues/) for remediation per component.

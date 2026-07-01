@@ -1,0 +1,346 @@
+---
+title: Terraform Variables
+description: Complete reference for Terraform input variables in the demo platform stack.
+---
+
+import Tooltip from "@/components/Tooltip.astro";
+
+All variables are defined in `terraform/variables.tf`. Pass overrides with `-var="name=value"` from the <Tooltip term="demo-repo" label="demo repo" /> root.
+
+## Layer enable flags
+
+<table>
+  <thead>
+    <tr>
+      <th>Variable</th>
+      <th>Default</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <code>enable_ingest</code>
+      </td>
+      <td>
+        <code>true</code>
+      </td>
+      <td>
+        Deploy ingest layer (<Tooltip term="s3" label="S3" />, ingest-sync
+        Lambda)
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>enable_processing</code>
+      </td>
+      <td>
+        <code>true</code>
+      </td>
+      <td>
+        Deploy processing layer (requires <code>enable_ingest</code>)
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>enable_presentation</code>
+      </td>
+      <td>
+        <code>true</code>
+      </td>
+      <td>
+        Deploy presentation layer (requires <code>enable_processing</code>)
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+## Region and ingest
+
+<table>
+  <thead>
+    <tr>
+      <th>Variable</th>
+      <th>Default</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <code>region</code>
+      </td>
+      <td>
+        <code>ap-southeast-2</code>
+      </td>
+      <td>
+        <Tooltip term="aws" label="AWS" /> region for all resources
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>source_bucket</code>
+      </td>
+      <td>
+        <code>geonet-open-data</code>
+      </td>
+      <td>
+        <Tooltip term="geonet" label="GeoNet" /> public source bucket
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>source_prefix</code>
+      </td>
+      <td>
+        <code>gnss/rinexhourly/</code>
+      </td>
+      <td>Source prefix in public bucket</td>
+    </tr>
+    <tr>
+      <td>
+        <code>lookback_hours</code>
+      </td>
+      <td>
+        <code>1</code>
+      </td>
+      <td>
+        <Tooltip term="lookback-hours" label="Ingest lookback" /> window (UTC
+        hours, 1–168)
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>schedule_expression</code>
+      </td>
+      <td>
+        <code>rate(1 hour)</code>
+      </td>
+      <td>
+        <Tooltip term="eventbridge-scheduler" label="EventBridge Scheduler" />{" "}
+        cadence
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+## Processing
+
+<table>
+  <thead>
+    <tr>
+      <th>Variable</th>
+      <th>Default</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <code>processor_source_prefix</code>
+      </td>
+      <td>
+        <code>raw/rinexhourly/</code>
+      </td>
+      <td>
+        Raw <Tooltip term="rinex" label="RINEX" /> prefix in data lake
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>destination_prefix</code>
+      </td>
+      <td>
+        <code>processed/tec/</code>
+      </td>
+      <td>Processor output prefix</td>
+    </tr>
+    <tr>
+      <td>
+        <code>processor_image_uri</code>
+      </td>
+      <td>
+        <code>""</code>
+      </td>
+      <td>
+        Override <Tooltip term="ecr" label="ECR" /> URI (empty = use repo + tag)
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>processor_image_tag</code>
+      </td>
+      <td>
+        <code>latest</code>
+      </td>
+      <td>Tag mirrored from GHCR</td>
+    </tr>
+    <tr>
+      <td>
+        <code>processor_maximum_concurrency</code>
+      </td>
+      <td>
+        <code>15</code>
+      </td>
+      <td>Max concurrent ingest queue invocations</td>
+    </tr>
+    <tr>
+      <td>
+        <code>reprocess_maximum_concurrency</code>
+      </td>
+      <td>
+        <code>2</code>
+      </td>
+      <td>Max concurrent reprocess queue invocations</td>
+    </tr>
+    <tr>
+      <td>
+        <code>processor_memory_mb</code>
+      </td>
+      <td>
+        <code>2048</code>
+      </td>
+      <td>
+        <Tooltip term="processor-lambda" label="Processor Lambda" /> memory
+        (128–2048 MiB)
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>processor_timeout_seconds</code>
+      </td>
+      <td>
+        <code>900</code>
+      </td>
+      <td>Processor Lambda timeout</td>
+    </tr>
+  </tbody>
+</table>
+
+## Observability thresholds
+
+<table>
+  <thead>
+    <tr>
+      <th>Variable</th>
+      <th>Default</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <code>dlq_visible_threshold</code>
+      </td>
+      <td>
+        <code>1</code>
+      </td>
+      <td>
+        <Tooltip term="dlq" label="DLQ" /> visible-message alarm threshold
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>queue_stale_age_seconds_threshold</code>
+      </td>
+      <td>
+        <code>1800</code>
+      </td>
+      <td>Stale message age alarm threshold</td>
+    </tr>
+    <tr>
+      <td>
+        <code>process_queue_visible_threshold</code>
+      </td>
+      <td>
+        <code>100</code>
+      </td>
+      <td>Process queue depth alarm threshold</td>
+    </tr>
+  </tbody>
+</table>
+
+## Presentation and portal
+
+<table>
+  <thead>
+    <tr>
+      <th>Variable</th>
+      <th>Default</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <code>deploy_amplify_on_apply</code>
+      </td>
+      <td>
+        <code>true</code>
+      </td>
+      <td>
+        Build and zip-deploy <Tooltip term="amplify" label="portal" /> on apply
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>web_source_dir</code>
+      </td>
+      <td>
+        <code>../web</code>
+      </td>
+      <td>Path to portal source directory</td>
+    </tr>
+    <tr>
+      <td>
+        <code>amplify_domain</code>
+      </td>
+      <td>
+        <code>*</code>
+      </td>
+      <td>
+        Amplify hostname for CORS (auto-derive when <code>*</code>)
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+## Tags
+
+<table>
+  <thead>
+    <tr>
+      <th>Variable</th>
+      <th>Default</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <code>tags</code>
+      </td>
+      <td>Project/ManagedBy map</td>
+      <td>Tags applied to all resources</td>
+    </tr>
+  </tbody>
+</table>
+
+## Example overrides
+
+```bash
+# Different region
+terraform -chdir=terraform apply -var="region=us-east-1"
+
+# Skip Amplify on apply
+terraform -chdir=terraform apply -var='deploy_amplify_on_apply=false'
+
+# Different processor image tag
+terraform -chdir=terraform apply -var="processor_image_tag=v1.2.3"
+
+# Lock CORS to Amplify hostname
+terraform -chdir=terraform apply \
+  -var="amplify_domain=$(terraform -chdir=terraform output -raw cors_domain)"
+```
+
+See [Terraform Outputs](/aws-event-driven-serverless-walkthrough/reference/terraform-outputs/) for values emitted after apply.

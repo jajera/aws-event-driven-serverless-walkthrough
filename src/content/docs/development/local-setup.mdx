@@ -1,0 +1,129 @@
+---
+title: Local Setup
+description: Local development setup for Lambda services and the Vite portal in the demo repository.
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import Tooltip from "@/components/Tooltip.astro";
+
+Local development targets the [event-driven-serverless-platform-demo](https://github.com/jajera/event-driven-serverless-platform-demo) monorepo. <Tooltip term="terraform" label="Terraform" /> provisions <Tooltip term="aws" label="AWS" /> resources; services and the portal can be developed and tested locally.
+
+## Clone the demo repo
+
+```bash
+git clone https://github.com/jajera/event-driven-serverless-platform-demo.git
+cd event-driven-serverless-platform-demo
+```
+
+Confirm [Tools and Accounts](/aws-event-driven-serverless-walkthrough/prerequisites/tools-and-accounts/) are installed.
+
+## Lambda services
+
+Python 3.14 services live under `services/`:
+
+<table>
+  <thead>
+    <tr>
+      <th>Service</th>
+      <th>Path</th>
+      <th>Runtime</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Ingest-sync</td>
+      <td>
+        <code>services/ingest-sync/</code>
+      </td>
+      <td>
+        Python 3.14 zip <Tooltip term="lambda" label="Lambda" />
+      </td>
+    </tr>
+    <tr>
+      <td>Query API</td>
+      <td>
+        <code>services/query-api/</code>
+      </td>
+      <td>Python 3.14 zip Lambda</td>
+    </tr>
+    <tr>
+      <td>Reprocess API</td>
+      <td>
+        <code>services/reprocess-api/</code>
+      </td>
+      <td>Python 3.14 zip Lambda</td>
+    </tr>
+    <tr>
+      <td>Processor</td>
+      <td>Container image (external)</td>
+      <td>
+        Python 3.13 in <code>ghcr.io/platformfuzz/tec-processor-image</code>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+### Run service unit tests
+
+Each service includes tests under `tests/`:
+
+```bash
+cd services/ingest-sync && python3 -m pytest
+cd services/query-api && python3 -m pytest
+cd services/reprocess-api && python3 -m pytest
+```
+
+### Rebuild Lambda packages
+
+Terraform packages zip Lambdas during apply. To rebuild manually:
+
+```bash
+./scripts/build-lambda-packages.sh
+```
+
+## Portal (web/)
+
+```bash
+cd web
+npm install
+npm test
+npm run build
+```
+
+Build output lands in `web/dist/`.
+
+<Aside type="caution">
+  `npm run dev` against the live{" "}
+  <Tooltip term="api-gateway" label="API Gateway" /> URL will fail in the
+  browser due to CORS. Use curl for API testing during local UI development, or
+  deploy to
+  <Tooltip term="amplify" label="Amplify" /> and complete [CORS
+  Lockdown](/aws-event-driven-serverless-walkthrough/deploy/cors-lockdown/).
+</Aside>
+
+## Deploy UI changes to Amplify
+
+After local changes, ship to the hosted portal:
+
+```bash
+export WEB_SOURCE_DIR="$(pwd)/web"
+export AMPLIFY_APP_ID="$(terraform -chdir=terraform output -raw amplify_app_id)"
+export VITE_API_URL="$(terraform -chdir=terraform output -raw api_url)"
+./scripts/deploy-amplify.sh
+```
+
+Requires a prior Terraform apply with the presentation layer enabled.
+
+## Processor image development
+
+The <Tooltip term="processor-lambda" label="processor" /> runs as an external container image. This repo mirrors it to <Tooltip term="ecr" label="ECR" /> — it does not maintain processor source code locally. To deploy a different tag:
+
+```bash
+./scripts/sync-processor-image.sh <tag>
+terraform -chdir=terraform apply -var="processor_image_tag=<tag>"
+```
+
+## Related pages
+
+- [Environment Variables](/aws-event-driven-serverless-walkthrough/reference/environment-variables/) — Lambda env var reference
+- [Amplify Portal](/aws-event-driven-serverless-walkthrough/deploy/amplify-portal/)

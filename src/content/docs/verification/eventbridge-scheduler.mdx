@@ -1,0 +1,77 @@
+---
+title: EventBridge Scheduler
+description: Verify the ingest-sync EventBridge Scheduler is deployed and configured.
+---
+
+import Tooltip from "@/components/Tooltip.astro";
+
+After full deployment, confirm the <Tooltip term="eventbridge-scheduler" label="EventBridge Scheduler" /> that triggers automated <Tooltip term="rinex" label="RINEX" /> ingest is present and named correctly.
+
+## Check scheduler exists
+
+From the demo repo root:
+
+```bash
+aws scheduler list-schedules --query "Schedules[?contains(Name, 'ingest-sync')]"
+```
+
+Expect at least one schedule whose name contains `ingest-sync`.
+
+## Expected configuration
+
+<table>
+  <thead>
+    <tr>
+      <th>Setting</th>
+      <th>Default</th>
+      <th>Terraform variable</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Schedule</td>
+      <td>Every 1 hour</td>
+      <td>
+        <code>schedule_expression</code> = <code>rate(1 hour)</code>
+      </td>
+    </tr>
+    <tr>
+      <td>Target</td>
+      <td>
+        <Tooltip term="ingest-sync" label="Ingest_Sync_Lambda" />
+      </td>
+      <td>
+        <code>ingest-scheduler</code> module
+      </td>
+    </tr>
+    <tr>
+      <td>Time zone</td>
+      <td>UTC</td>
+      <td>EventBridge Scheduler default</td>
+    </tr>
+  </tbody>
+</table>
+
+The scheduler was enabled during [Staged Apply](/aws-event-driven-serverless-walkthrough/deploy/staged-apply/) stage 2 (`-target=module.ingest_scheduler`).
+
+## Verify target Lambda
+
+```bash
+aws lambda get-function-configuration --function-name ingest-sync \
+  --query '{State:State,LastUpdateStatus:LastUpdateStatus}'
+```
+
+State should be `Active` with `LastUpdateStatus` of `Successful`.
+
+## What happens on fire
+
+Each schedule invocation:
+
+1. Ingest_Sync_Lambda computes a rolling window from <Tooltip term="lookback-hours" label="LOOKBACK_HOURS" /> (default 1)
+2. Lists GeoNet objects under `gnss/rinexhourly/`
+3. Copies new files to `raw/rinexhourly/{year}/{doy}/{filename}`
+
+## Next steps
+
+- Optionally trigger ingest immediately: [Manual Ingest](/aws-event-driven-serverless-walkthrough/verification/manual-ingest/)
+- After files land, verify queues: [SQS Queues](/aws-event-driven-serverless-walkthrough/verification/sqs-queues/)

@@ -1,0 +1,65 @@
+---
+title: Processor Lambda
+description: Monitor processor Lambda state, concurrency, and queue consumption.
+---
+
+import Tooltip from "@/components/Tooltip.astro";
+
+The <Tooltip term="processor-lambda" label="processor Lambda" /> container consumes one <Tooltip term="sqs" label="SQS" /> message per invocation from <Tooltip term="process-queue" label="Process_Queue" /> and <Tooltip term="reprocess-queue" label="Reprocess_Queue" />. Monitor its health and throughput during verification.
+
+## Check Lambda configuration
+
+From the demo repo root:
+
+```bash
+aws lambda get-function-configuration --function-name processor \
+  --query '{State:State,LastUpdateStatus:LastUpdateStatus,PackageType:PackageType,Timeout:Timeout,MemorySize:MemorySize}'
+```
+
+Expect:
+
+- `State`: `Active`
+- `PackageType`: `Image`
+- `Timeout`: 900
+- `MemorySize`: 2048
+
+## Monitor queue consumption
+
+```bash
+aws sqs get-queue-attributes \
+  --queue-url "$(terraform -chdir=terraform output -raw queue_url)" \
+  --attribute-names ApproximateNumberOfMessages ApproximateNumberOfMessagesNotVisible
+
+aws sqs get-queue-attributes \
+  --queue-url "$(terraform -chdir=terraform output -raw reprocess_queue_url)" \
+  --attribute-names ApproximateNumberOfMessages
+```
+
+## Concurrency limits
+
+Effective throughput is capped by:
+
+1. **Per-queue concurrency** — `processor_maximum_concurrency` (default 15) on ingest; `reprocess_maximum_concurrency` (default 2) on reprocess
+2. **Account-level Lambda quota** — shared across all functions in the region
+
+If ingest messages accumulate while the processor shows throttles, request a <Tooltip term="lambda" label="Lambda" /> concurrency quota increase for your account/region.
+
+## Check for errors and throttles
+
+```bash
+aws cloudwatch describe-alarms --alarm-names \
+  processor-lambda-errors processor-lambda-throttles \
+  --query 'MetricAlarms[].{Name:AlarmName,State:StateValue}'
+```
+
+## Verify image URI
+
+```bash
+terraform -chdir=terraform output -raw processor_image_uri
+```
+
+Should point to your <Tooltip term="ecr" label="ECR" /> repository with the tag synced in [ECR and Processor Image](/aws-event-driven-serverless-walkthrough/deploy/ecr-processor-image/).
+
+## Next step
+
+After processor runs complete, verify output in [S3 Processed Output](/aws-event-driven-serverless-walkthrough/verification/s3-processed-output/).

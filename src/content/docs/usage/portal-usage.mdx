@@ -1,0 +1,70 @@
+---
+title: Portal Usage
+description: Using the Amplify-hosted portal for station browsing, charts, IPP maps, and reprocessing.
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import Tooltip from "@/components/Tooltip.astro";
+
+The portal is a Vite SPA hosted on <Tooltip term="amplify" label="Amplify" />. Open it at `app_url` after deployment and [CORS Lockdown](/aws-event-driven-serverless-walkthrough/deploy/cors-lockdown/).
+
+## Open the portal
+
+```bash
+terraform -chdir=terraform output -raw app_url
+```
+
+## Station browser
+
+- <Tooltip term="station" label="Stations" /> are sorted alphabetically
+- Use the search box and press **Enter** to select a match
+- Selecting a station auto-loads the most recent available date from the catalog
+
+## Time-series chart
+
+- Displays <Tooltip term="tec" label="TEC" /> values over the selected time range
+- **Density-adaptive rendering** adjusts point density for readability
+- When more than 12 satellites are present, the legend is hidden and a hint directs you to the **Satellite filter** for per-SV inspection
+
+## IPP map
+
+- Shows <Tooltip term="ipp" label="Ionospheric Pierce Point" /> locations on a map
+- Uses outlier-resistant `fitBounds` for the viewport
+- Longitude values are normalized for dateline-safe display
+
+## Reprocess panel
+
+Submit reprocessing jobs with parameter overrides:
+
+- **NAV_DAY_OFFSET** — adjust navigation file day offset
+- Toggle output formats (<Tooltip term="parquet" label="Parquet" />, CSV, JSON, plots)
+
+Jobs route through <Tooltip term="reprocess-queue" label="Reprocess_Queue" /> with lower concurrency than ingest. Poll status via the panel or the [REST API](/aws-event-driven-serverless-walkthrough/usage/rest-api-usage/).
+
+## Deploy UI changes
+
+Do not use `npm run dev` against the live API — browser CORS blocks localhost.
+
+```bash
+export WEB_SOURCE_DIR="$(pwd)/web"
+export AMPLIFY_APP_ID="$(terraform -chdir=terraform output -raw amplify_app_id)"
+export VITE_API_URL="$(terraform -chdir=terraform output -raw api_url)"
+./scripts/deploy-amplify.sh
+```
+
+## Run unit tests locally
+
+```bash
+cd web && npm install && npm test
+```
+
+<Aside type="note">
+  The portal requires processed output under `processed/tec/` and CORS
+  configured for the Amplify hostname. See [Portal
+  verification](/aws-event-driven-serverless-walkthrough/verification/portal/).
+</Aside>
+
+## Related pages
+
+- [Amplify Portal deploy](/aws-event-driven-serverless-walkthrough/deploy/amplify-portal/)
+- [REST API Usage](/aws-event-driven-serverless-walkthrough/usage/rest-api-usage/)

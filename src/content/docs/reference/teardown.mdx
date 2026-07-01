@@ -1,0 +1,67 @@
+---
+title: Teardown
+description: Remove all Terraform-managed resources and empty the data lake bucket before destroy.
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import Tooltip from "@/components/Tooltip.astro";
+
+Teardown removes all <Tooltip term="aws" label="AWS" /> resources provisioned by <Tooltip term="terraform" label="Terraform" />. The <Tooltip term="data-lake-bucket" label="S3 data lake" /> bucket must be emptied before deletion if it contains objects.
+
+## Step 1 — Empty the data lake bucket
+
+From the demo repo root:
+
+```bash
+aws s3 rm "s3://$(terraform -chdir=terraform output -raw bucket_name)" --recursive
+```
+
+<Aside type="caution">
+  This permanently deletes all raw RINEX and processed TEC data in the bucket.
+  Confirm you are targeting the correct account and bucket before running.
+</Aside>
+
+If you already know the bucket name:
+
+```bash
+aws s3 rm s3://<bucket-name> --recursive
+```
+
+## Step 2 — Destroy Terraform resources
+
+```bash
+terraform -chdir=terraform destroy -var="region=ap-southeast-2"
+```
+
+Type `yes` to confirm. Terraform removes resources in reverse dependency order across all five modules.
+
+## If destroy fails on S3
+
+The bucket must be empty. Re-run the S3 rm command, then destroy again:
+
+```bash
+aws s3 rm "s3://$(terraform -chdir=terraform output -raw bucket_name)" --recursive
+terraform -chdir=terraform destroy -var="region=ap-southeast-2"
+```
+
+## ECR images
+
+Terraform destroy removes the <Tooltip term="ecr" label="ECR" /> repository. Orphaned images in other regions or manual copies are not affected.
+
+## SNS subscriptions
+
+Email <Tooltip term="sns" label="SNS" /> subscriptions are removed with the topic. No separate unsubscribe step is required.
+
+## Verify cleanup
+
+```bash
+terraform -chdir=terraform output
+aws s3 ls "s3://$(terraform -chdir=terraform output -raw bucket_name)" 2>&1 || echo "Bucket removed or inaccessible"
+```
+
+After successful destroy, `terraform output` should report no state or empty outputs.
+
+## Related pages
+
+- [Common Issues — Teardown](/aws-event-driven-serverless-walkthrough/troubleshooting/common-issues/#teardown-issues)
+- [Terraform Outputs](/aws-event-driven-serverless-walkthrough/reference/terraform-outputs/)

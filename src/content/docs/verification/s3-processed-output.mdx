@@ -1,0 +1,49 @@
+---
+title: S3 Processed Output
+description: Verify processor Lambda writes Parquet and JSON under processed/tec/ in the data lake.
+---
+
+import Tooltip from "@/components/Tooltip.astro";
+
+After the <Tooltip term="processor-lambda" label="processor Lambda" /> completes, <Tooltip term="tec" label="TEC" /> output appears under the `processed/tec/` prefix with Hive-style partition keys in the <Tooltip term="data-lake-bucket" label="data lake" />.
+
+## List processed output
+
+From the demo repo root:
+
+```bash
+aws s3 ls "s3://$(terraform -chdir=terraform output -raw bucket_name)/processed/tec/" --recursive
+```
+
+## Expected key pattern
+
+```text
+processed/tec/station={station}/year={year}/doy={doy}/{filename}.parquet
+processed/tec/station={station}/year={year}/doy={doy}/{filename}.json
+```
+
+Example:
+
+```text
+processed/tec/station=auck/year=2026/doy=179/auck1790.parquet
+processed/tec/station=auck/year=2026/doy=179/auck1790.json
+```
+
+## Key derivation
+
+Output keys are deterministically derived from raw input keys:
+
+1. Parse `raw/rinexhourly/{year}/{doy}/{filename}`
+2. Extract <Tooltip term="station" label="station" /> (first 4 characters of filename, lowercased)
+3. Write to `processed/tec/station={station}/year={year}/doy={doy}/{source_stem}.{ext}`
+
+See [S3 Key Patterns](/aws-event-driven-serverless-walkthrough/data-contract/s3-key-patterns/) and [Parquet Output](/aws-event-driven-serverless-walkthrough/data-contract/parquet-output/).
+
+## Catalog dependency
+
+Stations and dates appear in `/catalog` only after processed output exists. Raw ingest keys alone do not populate the catalog.
+
+## Next steps
+
+- Query data via [REST API](/aws-event-driven-serverless-walkthrough/verification/rest-api/)
+- Visualize in the [Portal](/aws-event-driven-serverless-walkthrough/verification/portal/)

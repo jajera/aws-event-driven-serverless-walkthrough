@@ -1,0 +1,122 @@
+---
+title: Reprocess Workflow
+description: Submit, poll, and verify reprocessing jobs through the REST API and Reprocess_Queue.
+---
+
+import Tooltip from "@/components/Tooltip.astro";
+
+Reprocessing lets operators recalibrate existing raw <Tooltip term="rinex" label="RINEX" /> with parameter overrides. Jobs route through <Tooltip term="reprocess-queue" label="Reprocess_Queue" /> with lower concurrency than ingest.
+
+## Submit a reprocessing job
+
+From the demo repo root:
+
+```bash
+export API_URL="$(terraform -chdir=terraform output -raw api_url)"
+
+JOB=$(curl -s -X POST "${API_URL}/reprocess" \
+  -H "Content-Type: application/json" \
+  -d '{"station": "auck", "year": 2026, "doy": 179, "parameters": {"NAV_DAY_OFFSET": 2}}')
+echo "$JOB"
+```
+
+Expected response:
+
+```json
+{ "job_id": "...", "status": "queued", "trace_id": "..." }
+```
+
+## Poll job status
+
+```bash
+JOB_ID=$(echo "$JOB" | python3 -c "import sys,json; print(json.load(sys.stdin)['job_id'])")
+
+curl "${API_URL}/reprocess/${JOB_ID}"
+```
+
+Status progresses: `queued` → `processing` → `completed` or `failed`.
+
+## Verify message on Reprocess_Queue
+
+```bash
+aws sqs get-queue-attributes \
+  --queue-url "$(terraform -chdir=terraform output -raw reprocess_queue_url)" \
+  --attribute-names ApproximateNumberOfMessages
+```
+
+Jobs land on **Reprocess_Queue**, not <Tooltip term="process-queue" label="Process_Queue" />.
+
+## Supported parameters
+
+<table>
+  <thead>
+    <tr>
+      <th>Parameter</th>
+      <th>Type</th>
+      <th>Default</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <code>NAV_DAY_OFFSET</code>
+      </td>
+      <td>Integer</td>
+      <td>1</td>
+      <td>
+        Days before observation <Tooltip term="doy" label="DOY" /> for nav files
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>SAVE_PARQUET</code>
+      </td>
+      <td>Boolean</td>
+      <td>true</td>
+      <td>
+        Write <Tooltip term="parquet" label="Parquet" /> output
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>SAVE_CSV</code>
+      </td>
+      <td>Boolean</td>
+      <td>true</td>
+      <td>Write CSV output</td>
+    </tr>
+    <tr>
+      <td>
+        <code>SAVE_JSON</code>
+      </td>
+      <td>Boolean</td>
+      <td>true</td>
+      <td>Write JSON output</td>
+    </tr>
+    <tr>
+      <td>
+        <code>SAVE_STATIC_PLOTS</code>
+      </td>
+      <td>Boolean</td>
+      <td>false</td>
+      <td>Generate PNG plots</td>
+    </tr>
+    <tr>
+      <td>
+        <code>SAVE_INTERACTIVE_PLOTS</code>
+      </td>
+      <td>Boolean</td>
+      <td>false</td>
+      <td>Generate HTML plots</td>
+    </tr>
+  </tbody>
+</table>
+
+Any other parameter key returns HTTP 400.
+
+See [SQS Message Schemas](/aws-event-driven-serverless-walkthrough/data-contract/sqs-message-schemas/) and [DynamoDB Jobs Table](/aws-event-driven-serverless-walkthrough/data-contract/dynamodb-jobs-table/).
+
+## Idempotent output
+
+Reprocessing overwrites existing output keys deterministically — the same input always produces the same output path per format.
