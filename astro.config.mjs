@@ -12,6 +12,9 @@ export default defineConfig({
       favicon: "/favicon.svg",
       description:
         "Step-by-step walkthrough for the AWS event-driven serverless GNSS platform — ingest, TEC processing, and visualization.",
+      components: {
+        Head: "./src/components/Head.astro",
+      },
       head: [
         {
           tag: "meta",
