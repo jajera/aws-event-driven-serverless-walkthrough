@@ -37,7 +37,7 @@ Output keys are deterministically derived from raw input keys:
 2. Extract <Tooltip term="station" label="station" /> (first 4 characters of filename, lowercased)
 3. Write to `processed/tec/station={station}/year={year}/doy={doy}/{source_stem}.{ext}`
 
-See [S3 Key Patterns](/aws-event-driven-serverless-walkthrough/data-contract/s3-key-patterns/) and [Parquet Output](/aws-event-driven-serverless-walkthrough/data-contract/parquet-output/).
+See [S3 Key Patterns](/data-contract/s3-key-patterns/) and [Parquet Output](/data-contract/parquet-output/).
 
 ## Catalog dependency
 
@@ -45,5 +45,5 @@ Stations and dates appear in `/catalog` only after processed output exists. Raw 
 
 ## Next steps
 
-- Query data via [REST API](/aws-event-driven-serverless-walkthrough/verification/rest-api/)
-- Visualize in the [Portal](/aws-event-driven-serverless-walkthrough/verification/portal/)
+- Query data via [REST API](/verification/rest-api/)
+- Visualize in the [Portal](/verification/portal/)

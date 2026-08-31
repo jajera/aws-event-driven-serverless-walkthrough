@@ -5,7 +5,7 @@ description: Verify the Amplify-hosted portal loads and displays TEC data for a 
 
 import Tooltip from "@/components/Tooltip.astro";
 
-The portal is a Vite SPA hosted on <Tooltip term="amplify" label="Amplify" />. Verify it loads in a browser and can query <Tooltip term="tec" label="TEC" /> data after [CORS Lockdown](/aws-event-driven-serverless-walkthrough/deploy/cors-lockdown/).
+The portal is a Vite SPA hosted on <Tooltip term="amplify" label="Amplify" />. Verify it loads in a browser and can query <Tooltip term="tec" label="TEC" /> data after [CORS Lockdown](/deploy/cors-lockdown/).
 
 ## Open the portal
 
@@ -27,9 +27,9 @@ Open the URL in a browser.
 
 ## Prerequisites
 
-- Processed output exists under `processed/tec/` (see [S3 Processed Output](/aws-event-driven-serverless-walkthrough/verification/s3-processed-output/))
-- [CORS Lockdown](/aws-event-driven-serverless-walkthrough/deploy/cors-lockdown/) applied so browser requests succeed
-- Portal deployed via Terraform or [Amplify Portal](/aws-event-driven-serverless-walkthrough/deploy/amplify-portal/) manual script
+- Processed output exists under `processed/tec/` (see [S3 Processed Output](/verification/s3-processed-output/))
+- [CORS Lockdown](/deploy/cors-lockdown/) applied so browser requests succeed
+- Portal deployed via Terraform or [Amplify Portal](/deploy/amplify-portal/) manual script
 
 ## Troubleshooting
 
@@ -62,4 +62,4 @@ Open the URL in a browser.
   </tbody>
 </table>
 
-See [Portal Usage](/aws-event-driven-serverless-walkthrough/usage/portal-usage/) and [Common Issues — Portal](/aws-event-driven-serverless-walkthrough/troubleshooting/common-issues/#portal).
+See [Portal Usage](/usage/portal-usage/) and [Common Issues — Portal](/troubleshooting/common-issues/#portal).

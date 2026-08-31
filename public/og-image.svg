@@ -173,5 +173,5 @@
   <polygon points="693,300 698,308 703,300" fill="#6d5f95"/>
   </g>
   <text x="600" y="742.625" text-anchor="middle" fill="#9b92b0" font-family="sans-serif" font-size="20">GNSS ingest · PyTECGg calibration · REST API &amp; visualization</text>
-  <text x="600" y="778.625" text-anchor="middle" fill="#6d5f95" font-family="sans-serif" font-size="18">jajera.github.io/aws-event-driven-serverless-walkthrough</text>
+  <text x="600" y="778.625" text-anchor="middle" fill="#6d5f95" font-family="sans-serif" font-size="18">aws-event-driven-serverless-walkthrough.johna.kiwi</text>
 </svg>

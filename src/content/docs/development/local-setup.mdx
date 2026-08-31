@@ -15,7 +15,7 @@ git clone https://github.com/jajera/event-driven-serverless-platform-demo.git
 cd event-driven-serverless-platform-demo
 ```
 
-Confirm [Tools and Accounts](/aws-event-driven-serverless-walkthrough/prerequisites/tools-and-accounts/) are installed.
+Confirm [Tools and Accounts](/prerequisites/tools-and-accounts/) are installed.
 
 ## Lambda services
 
@@ -98,7 +98,7 @@ Build output lands in `web/dist/`.
   browser due to CORS. Use curl for API testing during local UI development, or
   deploy to
   <Tooltip term="amplify" label="Amplify" /> and complete [CORS
-  Lockdown](/aws-event-driven-serverless-walkthrough/deploy/cors-lockdown/).
+  Lockdown](/deploy/cors-lockdown/).
 </Aside>
 
 ## Deploy UI changes to Amplify
@@ -125,5 +125,5 @@ terraform -chdir=terraform apply -var="processor_image_tag=<tag>"
 
 ## Related pages
 
-- [Environment Variables](/aws-event-driven-serverless-walkthrough/reference/environment-variables/) — Lambda env var reference
-- [Amplify Portal](/aws-event-driven-serverless-walkthrough/deploy/amplify-portal/)
+- [Environment Variables](/reference/environment-variables/) — Lambda env var reference
+- [Amplify Portal](/deploy/amplify-portal/)

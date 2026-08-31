@@ -2,7 +2,7 @@
 
 Step-by-step documentation site for deploying the [event-driven-serverless-platform-demo](https://github.com/jajera/event-driven-serverless-platform-demo) GNSS platform on AWS.
 
-Published at [jajera.github.io/aws-event-driven-serverless-walkthrough](https://aws-event-driven-serverless-walkthrough.johna.kiwi/).
+Published at [aws-event-driven-serverless-walkthrough.johna.kiwi](https://aws-event-driven-serverless-walkthrough.johna.kiwi/).
 
 ## Local development
 

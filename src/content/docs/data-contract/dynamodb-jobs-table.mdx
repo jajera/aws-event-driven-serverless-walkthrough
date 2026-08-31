@@ -181,9 +181,9 @@ export API_URL="$(terraform -chdir=terraform output -raw api_url)"
 curl "${API_URL}/reprocess/${JOB_ID}"
 ```
 
-See [API Response Schemas](/aws-event-driven-serverless-walkthrough/data-contract/api-response-schemas/) for the GET response format.
+See [API Response Schemas](/data-contract/api-response-schemas/) for the GET response format.
 
 ## Related pages
 
-- [SQS Message Schemas](/aws-event-driven-serverless-walkthrough/data-contract/sqs-message-schemas/) — Shape 1 reprocess messages
-- [Reprocess Workflow](/aws-event-driven-serverless-walkthrough/verification/reprocess-workflow/)
+- [SQS Message Schemas](/data-contract/sqs-message-schemas/) — Shape 1 reprocess messages
+- [Reprocess Workflow](/verification/reprocess-workflow/)

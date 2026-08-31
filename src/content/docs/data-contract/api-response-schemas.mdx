@@ -215,7 +215,7 @@ Catalog endpoints return HTTP 500 when `DATA_LAKE_BUCKET` is missing or when <To
       <td>No</td>
       <td>
         Override parameters (see [SQS Message
-        Schemas](/aws-event-driven-serverless-walkthrough/data-contract/sqs-message-schemas/))
+        Schemas](/data-contract/sqs-message-schemas/))
       </td>
     </tr>
   </tbody>
@@ -257,4 +257,4 @@ curl -s "${API_URL}/catalog?station=auck" | jq .
 curl -s "${API_URL}/query?station=auck&start_time=2026-06-28T00:00:00Z&end_time=2026-06-28T23:59:59Z&sv=G01" | jq .meta
 ```
 
-See [REST API Usage](/aws-event-driven-serverless-walkthrough/usage/rest-api-usage/) for operational guidance.
+See [REST API Usage](/usage/rest-api-usage/) for operational guidance.

@@ -21,7 +21,7 @@ export default defineConfig({
           attrs: {
             property: "og:image",
             content:
-              "https://jajera.github.io/aws-event-driven-serverless-walkthrough/og-image.png",
+              "https://aws-event-driven-serverless-walkthrough.johna.kiwi/og-image.png",
           },
         },
         {
@@ -29,7 +29,7 @@ export default defineConfig({
           attrs: {
             name: "twitter:image",
             content:
-              "https://jajera.github.io/aws-event-driven-serverless-walkthrough/og-image.png",
+              "https://aws-event-driven-serverless-walkthrough.johna.kiwi/og-image.png",
           },
         },
       ],
