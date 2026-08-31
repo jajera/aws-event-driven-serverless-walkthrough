@@ -1,6 +1,5 @@
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
-import starlightThemeVintage from "starlight-theme-vintage";
 import { starlightBasePath } from "starlight-base-path";
 
 export default defineConfig({
@@ -13,6 +12,7 @@ export default defineConfig({
       description:
         "Step-by-step walkthrough for the AWS event-driven serverless GNSS platform — ingest, TEC processing, and visualization.",
       components: {
+        ThemeSelect: "./src/components/ThemeSelect.astro",
         Head: "./src/components/Head.astro",
       },
       head: [
@@ -33,7 +33,11 @@ export default defineConfig({
           },
         },
       ],
-      plugins: [starlightThemeVintage(), starlightBasePath()],
+      plugins: [starlightBasePath()],
+      customCss: [
+        "./src/styles/patina-tokens.css",
+        "./src/styles/splash-overrides.css",
+      ],
       social: [
         {
           icon: "github",
