@@ -6,7 +6,7 @@ description: Using the Amplify-hosted portal for station browsing, charts, IPP m
 import { Aside } from "@astrojs/starlight/components";
 import Tooltip from "@/components/Tooltip.astro";
 
-The portal is a Vite SPA hosted on <Tooltip term="amplify" label="Amplify" />. Open it at `app_url` after deployment and [CORS Lockdown](/aws-event-driven-serverless-walkthrough/deploy/cors-lockdown/).
+The portal is a Vite SPA hosted on <Tooltip term="amplify" label="Amplify" />. Open it at `app_url` after deployment and [CORS Lockdown](/deploy/cors-lockdown/).
 
 ## Open the portal
 
@@ -39,7 +39,7 @@ Submit reprocessing jobs with parameter overrides:
 - **NAV_DAY_OFFSET** — adjust navigation file day offset
 - Toggle output formats (<Tooltip term="parquet" label="Parquet" />, CSV, JSON, plots)
 
-Jobs route through <Tooltip term="reprocess-queue" label="Reprocess_Queue" /> with lower concurrency than ingest. Poll status via the panel or the [REST API](/aws-event-driven-serverless-walkthrough/usage/rest-api-usage/).
+Jobs route through <Tooltip term="reprocess-queue" label="Reprocess_Queue" /> with lower concurrency than ingest. Poll status via the panel or the [REST API](/usage/rest-api-usage/).
 
 ## Deploy UI changes
 
@@ -61,10 +61,10 @@ cd web && npm install && npm test
 <Aside type="note">
   The portal requires processed output under `processed/tec/` and CORS
   configured for the Amplify hostname. See [Portal
-  verification](/aws-event-driven-serverless-walkthrough/verification/portal/).
+  verification](/verification/portal/).
 </Aside>
 
 ## Related pages
 
-- [Amplify Portal deploy](/aws-event-driven-serverless-walkthrough/deploy/amplify-portal/)
-- [REST API Usage](/aws-event-driven-serverless-walkthrough/usage/rest-api-usage/)
+- [Amplify Portal deploy](/deploy/amplify-portal/)
+- [REST API Usage](/usage/rest-api-usage/)

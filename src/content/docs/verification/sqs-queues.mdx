@@ -41,7 +41,7 @@ aws sqs get-queue-attributes \
   --attribute-names ApproximateNumberOfMessages
 ```
 
-Reprocess_Queue stays empty until you submit a job via the <Tooltip term="reprocess-api" label="Reprocess API" />. See [Reprocess Workflow](/aws-event-driven-serverless-walkthrough/verification/reprocess-workflow/).
+Reprocess_Queue stays empty until you submit a job via the <Tooltip term="reprocess-api" label="Reprocess API" />. See [Reprocess Workflow](/verification/reprocess-workflow/).
 
 ## Queue configuration
 
@@ -77,4 +77,4 @@ Both use `batch_size=1` and <Tooltip term="dlq" label="dead-letter queues" /> af
 
 ## Troubleshooting
 
-If messages accumulate without draining, check [Processor Lambda](/aws-event-driven-serverless-walkthrough/verification/processor-lambda/) and [Common Issues — SQS](/aws-event-driven-serverless-walkthrough/troubleshooting/common-issues/#sqs-queues).
+If messages accumulate without draining, check [Processor Lambda](/verification/processor-lambda/) and [Common Issues — SQS](/troubleshooting/common-issues/#sqs-queues).

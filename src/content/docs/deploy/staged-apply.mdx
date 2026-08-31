@@ -10,8 +10,8 @@ A staged apply ensures processing resources (<Tooltip term="sqs" label="SQS" />,
 
 ## Prerequisites
 
-- [Terraform Init](/aws-event-driven-serverless-walkthrough/deploy/terraform-init/) completed
-- [ECR image mirrored](/aws-event-driven-serverless-walkthrough/deploy/ecr-processor-image/)
+- [Terraform Init](/deploy/terraform-init/) completed
+- [ECR image mirrored](/deploy/ecr-processor-image/)
 
 ## Stage 1 — Processing layer
 
@@ -54,7 +54,7 @@ If Node.js is unavailable in your CI environment:
 terraform -chdir=terraform apply -var='deploy_amplify_on_apply=false' -var="region=ap-southeast-2"
 ```
 
-Deploy the portal manually — see [Amplify Portal](/aws-event-driven-serverless-walkthrough/deploy/amplify-portal/).
+Deploy the portal manually — see [Amplify Portal](/deploy/amplify-portal/).
 
 ## Single-shot alternative
 
@@ -67,9 +67,8 @@ terraform -chdir=terraform apply -var="region=ap-southeast-2"
 Staged apply is recommended for first-time deploys to control when automated ingest begins.
 
 <Aside type="tip">
-  After full apply, run [CORS
-  Lockdown](/aws-event-driven-serverless-walkthrough/deploy/cors-lockdown/) so
-  the hosted portal can call the API from the browser.
+  After full apply, run [CORS Lockdown](/deploy/cors-lockdown/) so the hosted
+  portal can call the API from the browser.
 </Aside>
 
 ## Verify apply outputs
@@ -81,9 +80,9 @@ terraform -chdir=terraform output -raw bucket_name
 terraform -chdir=terraform output -raw processor_image_uri
 ```
 
-See [Terraform Outputs](/aws-event-driven-serverless-walkthrough/reference/terraform-outputs/) for all output values.
+See [Terraform Outputs](/reference/terraform-outputs/) for all output values.
 
 ## Next steps
 
-- [Amplify Portal](/aws-event-driven-serverless-walkthrough/deploy/amplify-portal/) — confirm portal deployment
-- [Verification](/aws-event-driven-serverless-walkthrough/verification/eventbridge-scheduler/) — end-to-end checks
+- [Amplify Portal](/deploy/amplify-portal/) — confirm portal deployment
+- [Verification](/verification/eventbridge-scheduler/) — end-to-end checks

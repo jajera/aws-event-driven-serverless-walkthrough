@@ -280,7 +280,7 @@ function buildOgImage(flowContent, diagramWidth, diagramHeight) {
     ${flowContent}
   </g>
   <text x="${width / 2}" y="${diagramY + scaledDiagramH + 72}" text-anchor="middle" fill="#9b92b0" font-family="sans-serif" font-size="20">GNSS ingest · PyTECGg calibration · REST API &amp; visualization</text>
-  <text x="${width / 2}" y="${diagramY + scaledDiagramH + 108}" text-anchor="middle" fill="#6d5f95" font-family="sans-serif" font-size="18">jajera.github.io/aws-event-driven-serverless-walkthrough</text>
+  <text x="${width / 2}" y="${diagramY + scaledDiagramH + 108}" text-anchor="middle" fill="#6d5f95" font-family="sans-serif" font-size="18">aws-event-driven-serverless-walkthrough.johna.kiwi</text>
 </svg>
 `;
 }

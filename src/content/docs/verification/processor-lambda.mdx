@@ -58,8 +58,8 @@ aws cloudwatch describe-alarms --alarm-names \
 terraform -chdir=terraform output -raw processor_image_uri
 ```
 
-Should point to your <Tooltip term="ecr" label="ECR" /> repository with the tag synced in [ECR and Processor Image](/aws-event-driven-serverless-walkthrough/deploy/ecr-processor-image/).
+Should point to your <Tooltip term="ecr" label="ECR" /> repository with the tag synced in [ECR and Processor Image](/deploy/ecr-processor-image/).
 
 ## Next step
 
-After processor runs complete, verify output in [S3 Processed Output](/aws-event-driven-serverless-walkthrough/verification/s3-processed-output/).
+After processor runs complete, verify output in [S3 Processed Output](/verification/s3-processed-output/).

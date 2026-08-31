@@ -80,9 +80,7 @@ cd web && npm install && npm test
 <Aside type="caution">
   Do not rely on `npm run dev` against the live API — browser CORS blocks
   localhost origins. Use curl for API testing during development, or complete
-  [CORS
-  Lockdown](/aws-event-driven-serverless-walkthrough/deploy/cors-lockdown/) and
-  test against the hosted portal.
+  [CORS Lockdown](/deploy/cors-lockdown/) and test against the hosted portal.
 </Aside>
 
 ## Verify portal access
@@ -91,8 +89,8 @@ cd web && npm install && npm test
 terraform -chdir=terraform output -raw app_url
 ```
 
-Open the URL in a browser. You should see the station browser interface. See [Portal verification](/aws-event-driven-serverless-walkthrough/verification/portal/) and [Portal Usage](/aws-event-driven-serverless-walkthrough/usage/portal-usage/).
+Open the URL in a browser. You should see the station browser interface. See [Portal verification](/verification/portal/) and [Portal Usage](/usage/portal-usage/).
 
 ## Next step
 
-Lock down <Tooltip term="api-gateway" label="API Gateway" /> CORS with [CORS Lockdown](/aws-event-driven-serverless-walkthrough/deploy/cors-lockdown/) so the hosted portal can call the API.
+Lock down <Tooltip term="api-gateway" label="API Gateway" /> CORS with [CORS Lockdown](/deploy/cors-lockdown/) so the hosted portal can call the API.

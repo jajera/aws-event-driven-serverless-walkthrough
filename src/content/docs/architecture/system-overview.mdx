@@ -6,7 +6,7 @@ description: Terraform module layout, monorepo structure, apply order, and key d
 import { Aside } from "@astrojs/starlight/components";
 import Tooltip from "@/components/Tooltip.astro";
 
-This page is the technical architecture reference for the [demo repo](https://github.com/jajera/event-driven-serverless-platform-demo). For the end-to-end data flow and walkthrough path, start with [Project Overview](/aws-event-driven-serverless-walkthrough/introduction/project-overview/). For per-component runtime behavior, see [Infrastructure Layers](/aws-event-driven-serverless-walkthrough/architecture/infrastructure-layers/).
+This page is the technical architecture reference for the [demo repo](https://github.com/jajera/event-driven-serverless-platform-demo). For the end-to-end data flow and walkthrough path, start with [Project Overview](/introduction/project-overview/). For per-component runtime behavior, see [Infrastructure Layers](/architecture/infrastructure-layers/).
 
 The platform is a single monorepo provisioned entirely through <Tooltip term="terraform" label="Terraform" />. Five modules compose the stack; each owns shared resources in its layer rather than duplicating infrastructure definitions.
 
@@ -159,7 +159,7 @@ Layer enable flags gate module creation:
 
 Processing requires ingest. Presentation requires processing. The scheduler and observability modules follow the enabled layers they monitor.
 
-![Terraform module dependency diagram: root module fans out to ingest, ingest-scheduler, processing, presentation, and observability with cross-module output dependencies](/aws-event-driven-serverless-walkthrough/terraform-modules-diagram.svg)
+![Terraform module dependency diagram: root module fans out to ingest, ingest-scheduler, processing, presentation, and observability with cross-module output dependencies](/terraform-modules-diagram.svg)
 
 The modules table above maps each resource to its owning module.
 
@@ -173,7 +173,7 @@ Recommended sequence:
 2. **Ingest scheduler** — <Tooltip term="eventbridge-scheduler" label="EventBridge Scheduler" /> once processing is healthy
 3. **Full apply** — presentation, observability, and reconciliation
 
-Commands and Amplify options are in [Staged Apply](/aws-event-driven-serverless-walkthrough/deploy/staged-apply/).
+Commands and Amplify options are in [Staged Apply](/deploy/staged-apply/).
 
 ## Key design decisions
 
@@ -229,12 +229,12 @@ Commands and Amplify options are in [Staged Apply](/aws-event-driven-serverless-
 
 All Lambdas emit structured JSON logs with <Tooltip term="trace-id" label="trace_id" />, `duration_ms`, `outcome`, and error fields on failure. The `observability` module provisions alarms (DLQ depth, processor health, queue backlog, ingest-sync errors), an SNS topic, and the **`event-driven-platform`** dashboard.
 
-Alarm names, subscription steps, and dashboard verification are in [Alarms and Dashboard](/aws-event-driven-serverless-walkthrough/verification/alarms-dashboard/).
+Alarm names, subscription steps, and dashboard verification are in [Alarms and Dashboard](/verification/alarms-dashboard/).
 
 ## Related pages
 
-- [Project Overview](/aws-event-driven-serverless-walkthrough/introduction/project-overview/) — what you build and walkthrough path
-- [Infrastructure Layers](/aws-event-driven-serverless-walkthrough/architecture/infrastructure-layers/) — ingest, processing, presentation runtime detail
-- [Staged Apply](/aws-event-driven-serverless-walkthrough/deploy/staged-apply/) — recommended Terraform apply order
-- [Terraform Variables](/aws-event-driven-serverless-walkthrough/reference/terraform-variables/) and [Terraform Outputs](/aws-event-driven-serverless-walkthrough/reference/terraform-outputs/) — configuration reference
-- [Data Contract](/aws-event-driven-serverless-walkthrough/data-contract/sqs-message-schemas/) — SQS, DynamoDB, S3 keys, and API schemas
+- [Project Overview](/introduction/project-overview/) — what you build and walkthrough path
+- [Infrastructure Layers](/architecture/infrastructure-layers/) — ingest, processing, presentation runtime detail
+- [Staged Apply](/deploy/staged-apply/) — recommended Terraform apply order
+- [Terraform Variables](/reference/terraform-variables/) and [Terraform Outputs](/reference/terraform-outputs/) — configuration reference
+- [Data Contract](/data-contract/sqs-message-schemas/) — SQS, DynamoDB, S3 keys, and API schemas

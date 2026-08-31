@@ -106,22 +106,20 @@ The plan creates resources across five modules: ingest, ingest-scheduler, proces
   </tbody>
 </table>
 
-See [Terraform Variables](/aws-event-driven-serverless-walkthrough/reference/terraform-variables/) for the full list.
+See [Terraform Variables](/reference/terraform-variables/) for the full list.
 
 <Aside type="caution">
   Do **not** run a full `apply` yet. The processor Lambda requires an ECR image
   mirrored before the processing module can deploy successfully. Continue to
-  [ECR and Processor
-  Image](/aws-event-driven-serverless-walkthrough/deploy/ecr-processor-image/)
-  first.
+  [ECR and Processor Image](/deploy/ecr-processor-image/) first.
 </Aside>
 
 ## Deployment order
 
-1. [ECR and Processor Image](/aws-event-driven-serverless-walkthrough/deploy/ecr-processor-image/) — create ECR repo and mirror GHCR image
-2. [Staged Apply](/aws-event-driven-serverless-walkthrough/deploy/staged-apply/) — apply processing, then scheduler, then full stack
-3. [Amplify Portal](/aws-event-driven-serverless-walkthrough/deploy/amplify-portal/) — confirm or manually deploy the frontend
-4. [CORS Lockdown](/aws-event-driven-serverless-walkthrough/deploy/cors-lockdown/) — restrict API Gateway CORS to the portal hostname
+1. [ECR and Processor Image](/deploy/ecr-processor-image/) — create ECR repo and mirror GHCR image
+2. [Staged Apply](/deploy/staged-apply/) — apply processing, then scheduler, then full stack
+3. [Amplify Portal](/deploy/amplify-portal/) — confirm or manually deploy the frontend
+4. [CORS Lockdown](/deploy/cors-lockdown/) — restrict API Gateway CORS to the portal hostname
 
 ## Verify init succeeded
 
